@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-api-config
+  labels:
+    app: catalog-api
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  RabbitMq__Host: "rabbitmq"
+  MongoDbSettings__DatabaseName: "catalogdb"
+  JwtSettings__Issuer: "FiapCloudGames"
+  JwtSettings__Audience: "FiapCloudGames"
