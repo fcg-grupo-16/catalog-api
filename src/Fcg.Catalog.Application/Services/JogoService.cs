@@ -25,6 +25,25 @@ public sealed class JogoService(IJogoRepository jogoRepository) : IJogoService
         return MapToDto(jogo);
     }
 
+
+
+    public async Task InserirLoteAsync(List<CriarJogoRequestDto> listaDto, CancellationToken ct = default)
+    {
+        List<Jogo> listaJogos = new List<Jogo>();
+
+        foreach (var jogoDto in listaDto)
+        {
+            if (await jogoRepository.TituloExisteAsync(jogoDto.Titulo, ct))
+            {
+                continue;
+            }
+            listaJogos.Add(new Jogo(jogoDto.Titulo, jogoDto.Descricao, jogoDto.Genero, new Preco(jogoDto.Preco), jogoDto.DataLancamento));
+        }
+
+        await jogoRepository.CriarLote(listaJogos, ct);
+    }
+
+
     public async Task<JogoResponseDto> ObterPorIdAsync(string id, CancellationToken ct = default)
     {
         var jogo = await jogoRepository.ObterPorIdAsync(id, ct)

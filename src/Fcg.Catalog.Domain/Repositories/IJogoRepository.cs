@@ -9,6 +9,7 @@ public interface IJogoRepository
     Task<IEnumerable<Jogo>> ObterTodosAsync(int pagina, int tamanhoPagina, CancellationToken ct = default);
     Task<IEnumerable<Jogo>> BuscarPorGeneroAsync(GeneroJogo genero, int pagina, int tamanhoPagina, CancellationToken ct = default);
     Task CriarAsync(Jogo jogo, CancellationToken ct = default);
+    Task CriarLote(IEnumerable<Jogo> jogos, CancellationToken ct = default);
     Task AtualizarAsync(Jogo jogo, CancellationToken ct = default);
     Task RemoverAsync(string id, CancellationToken ct = default);
     Task<bool> TituloExisteAsync(string titulo, CancellationToken ct = default);

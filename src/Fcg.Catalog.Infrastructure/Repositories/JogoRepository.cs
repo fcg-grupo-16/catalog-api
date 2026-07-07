@@ -30,6 +30,12 @@ public sealed class JogoRepository(AppDbContext context) : IJogoRepository
         await context.SaveChangesAsync(ct);
     }
 
+    public async Task CriarLote(IEnumerable<Jogo> jogos, CancellationToken ct = default)
+    {
+        context.Jogos.AddRange(jogos);
+        await context.SaveChangesAsync(ct);
+    }
+
     public async Task AtualizarAsync(Jogo jogo, CancellationToken ct = default)
     {
         context.Jogos.Update(jogo);

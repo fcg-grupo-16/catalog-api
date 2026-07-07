@@ -1,0 +1,842 @@
+[
+  {
+    "titulo": "Clair Obscur: Expedition 33",
+    "descricao": "RPG por turnos com narrativa cinematográfica.",
+    "genero": 2,
+    "preco": 249.90,
+    "dataLancamento": "2025-04-24T00:00:00Z"
+  },
+  {
+    "titulo": "Final Fantasy VII Rebirth",
+    "descricao": "Continuação da jornada de Cloud e seus aliados.",
+    "genero": 2,
+    "preco": 349.90,
+    "dataLancamento": "2024-02-29T00:00:00Z"
+  },
+  {
+    "titulo": "Metaphor: ReFantazio",
+    "descricao": "RPG de fantasia desenvolvido pela Atlus.",
+    "genero": 2,
+    "preco": 299.90,
+    "dataLancamento": "2024-10-11T00:00:00Z"
+  },
+  {
+    "titulo": "Persona 3 Reload",
+    "descricao": "Remake do clássico JRPG.",
+    "genero": 2,
+    "preco": 279.90,
+    "dataLancamento": "2024-02-02T00:00:00Z"
+  },
+  {
+    "titulo": "Dragon Quest XI S",
+    "descricao": "JRPG clássico da Square Enix.",
+    "genero": 2,
+    "preco": 169.90,
+    "dataLancamento": "2019-09-27T00:00:00Z"
+  },
+  {
+    "titulo": "Octopath Traveler II",
+    "descricao": "RPG por turnos com visual HD-2D.",
+    "genero": 2,
+    "preco": 239.90,
+    "dataLancamento": "2023-02-24T00:00:00Z"
+  },
+  {
+    "titulo": "Sea of Stars",
+    "descricao": "RPG inspirado nos clássicos dos anos 90.",
+    "genero": 2,
+    "preco": 149.90,
+    "dataLancamento": "2023-08-29T00:00:00Z"
+  },
+  {
+    "titulo": "Elden Ring",
+    "descricao": "RPG de ação em mundo aberto.",
+    "genero": 2,
+    "preco": 229.90,
+    "dataLancamento": "2022-02-25T00:00:00Z"
+  },
+  {
+    "titulo": "The Witcher 3: Wild Hunt",
+    "descricao": "Aventura épica com Geralt de Rívia.",
+    "genero": 2,
+    "preco": 119.90,
+    "dataLancamento": "2015-05-19T00:00:00Z"
+  },
+  {
+    "titulo": "Cyberpunk 2077",
+    "descricao": "RPG futurista em Night City.",
+    "genero": 2,
+    "preco": 199.90,
+    "dataLancamento": "2020-12-10T00:00:00Z"
+  },
+  {
+    "titulo": "God of War Ragnarök",
+    "descricao": "Kratos enfrenta o destino dos deuses nórdicos.",
+    "genero": 0,
+    "preco": 249.90,
+    "dataLancamento": "2022-11-09T00:00:00Z"
+  },
+  {
+    "titulo": "Black Myth: Wukong",
+    "descricao": "Ação inspirada na mitologia chinesa.",
+    "genero": 0,
+    "preco": 299.90,
+    "dataLancamento": "2024-08-20T00:00:00Z"
+  },
+  {
+    "titulo": "Stellar Blade",
+    "descricao": "Ação com combates rápidos e futuristas.",
+    "genero": 0,
+    "preco": 329.90,
+    "dataLancamento": "2024-04-26T00:00:00Z"
+  },
+  {
+    "titulo": "Ghost of Tsushima",
+    "descricao": "Aventura samurai em mundo aberto.",
+    "genero": 0,
+    "preco": 229.90,
+    "dataLancamento": "2020-07-17T00:00:00Z"
+  },
+  {
+    "titulo": "Assassin's Creed Shadows",
+    "descricao": "Aventura ambientada no Japão feudal.",
+    "genero": 0,
+    "preco": 349.90,
+    "dataLancamento": "2025-03-20T00:00:00Z"
+  },
+  {
+    "titulo": "Halo Infinite",
+    "descricao": "FPS protagonizado por Master Chief.",
+    "genero": 8,
+    "preco": 149.90,
+    "dataLancamento": "2021-12-08T00:00:00Z"
+  },
+  {
+    "titulo": "DOOM Eternal",
+    "descricao": "FPS frenético contra demônios.",
+    "genero": 8,
+    "preco": 99.90,
+    "dataLancamento": "2020-03-20T00:00:00Z"
+  },
+  {
+    "titulo": "Call of Duty: Black Ops 6",
+    "descricao": "FPS militar com campanha e multiplayer.",
+    "genero": 8,
+    "preco": 349.90,
+    "dataLancamento": "2024-10-25T00:00:00Z"
+  },
+  {
+    "titulo": "Battlefield 2042",
+    "descricao": "Conflitos militares em larga escala.",
+    "genero": 8,
+    "preco": 99.90,
+    "dataLancamento": "2021-11-19T00:00:00Z"
+  },
+  {
+    "titulo": "Resident Evil 4 Remake",
+    "descricao": "Remake do clássico survival horror.",
+    "genero": 11,
+    "preco": 229.90,
+    "dataLancamento": "2023-03-24T00:00:00Z"
+  },
+  {
+    "titulo": "Silent Hill 2 Remake",
+    "descricao": "Terror psicológico reimaginado.",
+    "genero": 11,
+    "preco": 299.90,
+    "dataLancamento": "2024-10-08T00:00:00Z"
+  },
+  {
+    "titulo": "Alan Wake II",
+    "descricao": "Mistério e terror sobrenatural.",
+    "genero": 11,
+    "preco": 249.90,
+    "dataLancamento": "2023-10-27T00:00:00Z"
+  },
+  {
+    "titulo": "Forza Horizon 5",
+    "descricao": "Festival de corridas em mundo aberto.",
+    "genero": 5,
+    "preco": 199.90,
+    "dataLancamento": "2021-11-09T00:00:00Z"
+  },
+  {
+    "titulo": "Gran Turismo 7",
+    "descricao": "Simulação automobilística.",
+    "genero": 5,
+    "preco": 249.90,
+    "dataLancamento": "2022-03-04T00:00:00Z"
+  },
+  {
+    "titulo": "Need for Speed Unbound",
+    "descricao": "Corridas urbanas e personalização.",
+    "genero": 5,
+    "preco": 159.90,
+    "dataLancamento": "2022-12-02T00:00:00Z"
+  },
+  {
+    "titulo": "Age of Empires IV",
+    "descricao": "Estratégia em tempo real.",
+    "genero": 3,
+    "preco": 159.90,
+    "dataLancamento": "2021-10-28T00:00:00Z"
+  },
+  {
+    "titulo": "Civilization VII",
+    "descricao": "Construa um império através das eras.",
+    "genero": 3,
+    "preco": 349.90,
+    "dataLancamento": "2025-02-11T00:00:00Z"
+  },
+  {
+    "titulo": "Minecraft",
+    "descricao": "Construa e sobreviva em um mundo de blocos.",
+    "genero": 11,
+    "preco": 99.90,
+    "dataLancamento": "2011-11-18T00:00:00Z"
+  },
+  {
+    "titulo": "Terraria",
+    "descricao": "Sandbox 2D com exploração e crafting.",
+    "genero": 11,
+    "preco": 39.90,
+    "dataLancamento": "2011-05-16T00:00:00Z"
+  },
+  {
+    "titulo": "Hades",
+    "descricao": "Roguelike inspirado na mitologia grega.",
+    "genero": 11,
+    "preco": 89.90,
+    "dataLancamento": "2020-09-17T00:00:00Z"
+  },
+  {
+    "titulo": "Kingdom Come: Deliverance II",
+    "descricao": "RPG medieval com foco em realismo histórico.",
+    "genero": 2,
+    "preco": 329.90,
+    "dataLancamento": "2025-02-04T00:00:00Z"
+  },
+  {
+    "titulo": "Avowed",
+    "descricao": "RPG em primeira pessoa ambientado no universo de Pillars of Eternity.",
+    "genero": 2,
+    "preco": 299.90,
+    "dataLancamento": "2025-02-18T00:00:00Z"
+  },
+  {
+    "titulo": "Dragon's Dogma 2",
+    "descricao": "RPG de ação em um vasto mundo de fantasia.",
+    "genero": 2,
+    "preco": 299.90,
+    "dataLancamento": "2024-03-22T00:00:00Z"
+  },
+  {
+    "titulo": "Monster Hunter Wilds",
+    "descricao": "Caçadas épicas contra monstros gigantes.",
+    "genero": 2,
+    "preco": 349.90,
+    "dataLancamento": "2025-02-28T00:00:00Z"
+  },
+  {
+    "titulo": "Lords of the Fallen",
+    "descricao": "Soulslike ambientado em um mundo sombrio.",
+    "genero": 2,
+    "preco": 219.90,
+    "dataLancamento": "2023-10-13T00:00:00Z"
+  },
+  {
+    "titulo": "Rise of the Ronin",
+    "descricao": "Aventura de ação no Japão do século XIX.",
+    "genero": 0,
+    "preco": 329.90,
+    "dataLancamento": "2024-03-22T00:00:00Z"
+  },
+  {
+    "titulo": "Marvel's Spider-Man 2",
+    "descricao": "Peter Parker e Miles Morales enfrentam novas ameaças.",
+    "genero": 0,
+    "preco": 299.90,
+    "dataLancamento": "2023-10-20T00:00:00Z"
+  },
+  {
+    "titulo": "Star Wars Jedi: Survivor",
+    "descricao": "Continuação da jornada de Cal Kestis.",
+    "genero": 0,
+    "preco": 229.90,
+    "dataLancamento": "2023-04-28T00:00:00Z"
+  },
+  {
+    "titulo": "Control",
+    "descricao": "Ação sobrenatural com poderes telecinéticos.",
+    "genero": 0,
+    "preco": 99.90,
+    "dataLancamento": "2019-08-27T00:00:00Z"
+  },
+  {
+    "titulo": "Returnal",
+    "descricao": "Roguelike de ação com ficção científica.",
+    "genero": 0,
+    "preco": 179.90,
+    "dataLancamento": "2021-04-30T00:00:00Z"
+  },
+  {
+    "titulo": "Counter-Strike 2",
+    "descricao": "FPS competitivo da Valve.",
+    "genero": 8,
+    "preco": 0.00,
+    "dataLancamento": "2023-09-27T00:00:00Z"
+  },
+  {
+    "titulo": "Valorant",
+    "descricao": "FPS tático baseado em agentes.",
+    "genero": 8,
+    "preco": 0.00,
+    "dataLancamento": "2020-06-02T00:00:00Z"
+  },
+  {
+    "titulo": "Tom Clancy's Rainbow Six Siege",
+    "descricao": "FPS tático focado em equipes e destruição de cenários.",
+    "genero": 8,
+    "preco": 79.90,
+    "dataLancamento": "2015-12-01T00:00:00Z"
+  },
+  {
+    "titulo": "Warhammer 40,000: Space Marine 2",
+    "descricao": "Combate intenso no universo Warhammer 40K.",
+    "genero": 0,
+    "preco": 279.90,
+    "dataLancamento": "2024-09-09T00:00:00Z"
+  },
+  {
+    "titulo": "Dead Space Remake",
+    "descricao": "Remake do clássico de terror espacial.",
+    "genero": 11,
+    "preco": 199.90,
+    "dataLancamento": "2023-01-27T00:00:00Z"
+  },
+  {
+    "titulo": "The Callisto Protocol",
+    "descricao": "Terror e sobrevivência em uma prisão espacial.",
+    "genero": 11,
+    "preco": 149.90,
+    "dataLancamento": "2022-12-02T00:00:00Z"
+  },
+  {
+    "titulo": "F1 24",
+    "descricao": "Simulador oficial da Fórmula 1.",
+    "genero": 5,
+    "preco": 299.90,
+    "dataLancamento": "2024-05-31T00:00:00Z"
+  },
+  {
+    "titulo": "EA Sports WRC",
+    "descricao": "Simulação oficial do Campeonato Mundial de Rally.",
+    "genero": 5,
+    "preco": 189.90,
+    "dataLancamento": "2023-11-03T00:00:00Z"
+  },
+  {
+    "titulo": "Cities: Skylines II",
+    "descricao": "Construa e gerencie uma cidade moderna.",
+    "genero": 3,
+    "preco": 199.90,
+    "dataLancamento": "2023-10-24T00:00:00Z"
+  },
+  {
+    "titulo": "Frostpunk 2",
+    "descricao": "Estratégia e sobrevivência em um mundo congelado.",
+    "genero": 3,
+    "preco": 229.90,
+    "dataLancamento": "2024-09-20T00:00:00Z"
+  },
+  {
+    "titulo": "Satisfactory",
+    "descricao": "Automatize fábricas em um planeta alienígena.",
+    "genero": 6,
+    "preco": 119.90,
+    "dataLancamento": "2024-09-10T00:00:00Z"
+  },
+  {
+    "titulo": "Factorio",
+    "descricao": "Construa linhas de produção altamente eficientes.",
+    "genero": 6,
+    "preco": 99.90,
+    "dataLancamento": "2020-08-14T00:00:00Z"
+  },
+  {
+    "titulo": "Palworld",
+    "descricao": "Sobrevivência e captura de criaturas.",
+    "genero": 11,
+    "preco": 89.90,
+    "dataLancamento": "2024-01-19T00:00:00Z"
+  },
+  {
+    "titulo": "Prince of Persia: The Lost Crown",
+    "descricao": "Aventura de plataforma e exploração.",
+    "genero": 1,
+    "preco": 199.90,
+    "dataLancamento": "2024-01-18T00:00:00Z"
+  },
+  {
+    "titulo": "Ori and the Will of the Wisps",
+    "descricao": "Metroidvania com visual artístico.",
+    "genero": 1,
+    "preco": 89.90,
+    "dataLancamento": "2020-03-11T00:00:00Z"
+  },
+  {
+    "titulo": "Hollow Knight",
+    "descricao": "Explore um vasto reino subterrâneo.",
+    "genero": 1,
+    "preco": 59.90,
+    "dataLancamento": "2017-02-24T00:00:00Z"
+  },
+  {
+    "titulo": "Dead Cells",
+    "descricao": "Roguelike com combate rápido e progressão constante.",
+    "genero": 11,
+    "preco": 79.90,
+    "dataLancamento": "2018-08-07T00:00:00Z"
+  },
+  {
+    "titulo": "Slay the Spire",
+    "descricao": "Roguelike de construção de baralhos.",
+    "genero": 11,
+    "preco": 69.90,
+    "dataLancamento": "2019-01-23T00:00:00Z"
+  },
+  {
+    "titulo": "Vampire Survivors",
+    "descricao": "Roguelite focado em sobrevivência contra hordas.",
+    "genero": 11,
+    "preco": 24.90,
+    "dataLancamento": "2022-10-20T00:00:00Z"
+  },
+  {
+    "titulo": "Astro Bot",
+    "descricao": "Plataforma 3D com fases criativas e exploração.",
+    "genero": 11,
+    "preco": 299.90,
+    "dataLancamento": "2024-09-06T00:00:00Z"
+  },
+  {
+    "titulo": "Chrono Trigger",
+    "descricao": "Clássico RPG de viagens no tempo.",
+    "genero": 2,
+    "preco": 79.90,
+    "dataLancamento": "1995-03-11T00:00:00Z"
+  },
+  {
+    "titulo": "Chrono Cross: The Radical Dreamers Edition",
+    "descricao": "Remaster do clássico RPG da Square.",
+    "genero": 2,
+    "preco": 99.90,
+    "dataLancamento": "2022-04-07T00:00:00Z"
+  },
+  {
+    "titulo": "Bravely Default II",
+    "descricao": "JRPG com sistema clássico de Brave e Default.",
+    "genero": 2,
+    "preco": 179.90,
+    "dataLancamento": "2021-02-26T00:00:00Z"
+  },
+  {
+    "titulo": "Ni no Kuni II: Revenant Kingdom",
+    "descricao": "RPG com visual inspirado em animações japonesas.",
+    "genero": 2,
+    "preco": 129.90,
+    "dataLancamento": "2018-03-23T00:00:00Z"
+  },
+  {
+    "titulo": "Tales of Arise",
+    "descricao": "JRPG de ação com narrativa envolvente.",
+    "genero": 2,
+    "preco": 169.90,
+    "dataLancamento": "2021-09-10T00:00:00Z"
+  },
+  {
+    "titulo": "Like a Dragon: Infinite Wealth",
+    "descricao": "RPG por turnos estrelado por Ichiban Kasuga.",
+    "genero": 2,
+    "preco": 329.90,
+    "dataLancamento": "2024-01-26T00:00:00Z"
+  },
+  {
+    "titulo": "Sekiro: Shadows Die Twice",
+    "descricao": "Ação intensa ambientada no Japão feudal.",
+    "genero": 0,
+    "preco": 199.90,
+    "dataLancamento": "2019-03-22T00:00:00Z"
+  },
+  {
+    "titulo": "Devil May Cry 5",
+    "descricao": "Hack and slash com combates rápidos.",
+    "genero": 0,
+    "preco": 129.90,
+    "dataLancamento": "2019-03-08T00:00:00Z"
+  },
+  {
+    "titulo": "Bayonetta 3",
+    "descricao": "Ação frenética contra criaturas sobrenaturais.",
+    "genero": 0,
+    "preco": 249.90,
+    "dataLancamento": "2022-10-28T00:00:00Z"
+  },
+  {
+    "titulo": "Hi-Fi Rush",
+    "descricao": "Jogo de ação em ritmo musical.",
+    "genero": 0,
+    "preco": 149.90,
+    "dataLancamento": "2023-01-25T00:00:00Z"
+  },
+  {
+    "titulo": "Wolfenstein II: The New Colossus",
+    "descricao": "FPS alternativo ambientado em uma América ocupada.",
+    "genero": 8,
+    "preco": 79.90,
+    "dataLancamento": "2017-10-27T00:00:00Z"
+  },
+  {
+    "titulo": "BioShock Infinite",
+    "descricao": "FPS com narrativa marcante na cidade de Columbia.",
+    "genero": 8,
+    "preco": 49.90,
+    "dataLancamento": "2013-03-26T00:00:00Z"
+  },
+  {
+    "titulo": "Prey",
+    "descricao": "FPS de ficção científica em uma estação espacial.",
+    "genero": 8,
+    "preco": 69.90,
+    "dataLancamento": "2017-05-05T00:00:00Z"
+  },
+  {
+    "titulo": "The Evil Within 2",
+    "descricao": "Terror psicológico e sobrevivência.",
+    "genero": 11,
+    "preco": 69.90,
+    "dataLancamento": "2017-10-13T00:00:00Z"
+  },
+  {
+    "titulo": "SOMA",
+    "descricao": "Terror filosófico nas profundezas do oceano.",
+    "genero": 11,
+    "preco": 39.90,
+    "dataLancamento": "2015-09-22T00:00:00Z"
+  },
+  {
+    "titulo": "DiRT Rally 2.0",
+    "descricao": "Simulação de rali com física realista.",
+    "genero": 5,
+    "preco": 59.90,
+    "dataLancamento": "2019-02-26T00:00:00Z"
+  },
+  {
+    "titulo": "MotoGP 24",
+    "descricao": "Simulador oficial da MotoGP.",
+    "genero": 5,
+    "preco": 249.90,
+    "dataLancamento": "2024-05-02T00:00:00Z"
+  },
+  {
+    "titulo": "Company of Heroes 3",
+    "descricao": "Estratégia em tempo real durante a Segunda Guerra.",
+    "genero": 3,
+    "preco": 199.90,
+    "dataLancamento": "2023-02-23T00:00:00Z"
+  },
+  {
+    "titulo": "XCOM 2",
+    "descricao": "Estratégia tática contra uma invasão alienígena.",
+    "genero": 3,
+    "preco": 99.90,
+    "dataLancamento": "2016-02-05T00:00:00Z"
+  },
+  {
+    "titulo": "Euro Truck Simulator 2",
+    "descricao": "Simulador de caminhões pelas estradas da Europa.",
+    "genero": 6,
+    "preco": 69.90,
+    "dataLancamento": "2012-10-19T00:00:00Z"
+  },
+  {
+    "titulo": "Farming Simulator 25",
+    "descricao": "Gerencie uma fazenda moderna.",
+    "genero": 6,
+    "preco": 229.90,
+    "dataLancamento": "2024-11-12T00:00:00Z"
+  },
+  {
+    "titulo": "Noita",
+    "descricao": "Roguelike com física baseada em pixels.",
+    "genero": 11,
+    "preco": 79.90,
+    "dataLancamento": "2020-10-15T00:00:00Z"
+  },
+  {
+    "titulo": "Enter the Gungeon",
+    "descricao": "Roguelike de ação com centenas de armas.",
+    "genero": 11,
+    "preco": 49.90,
+    "dataLancamento": "2016-04-05T00:00:00Z"
+  },
+  {
+    "titulo": "Core Keeper",
+    "descricao": "Sandbox de mineração e sobrevivência.",
+    "genero": 11,
+    "preco": 59.90,
+    "dataLancamento": "2024-08-27T00:00:00Z"
+  },
+  {
+    "titulo": "Valheim",
+    "descricao": "Sobrevivência viking em mundo procedural.",
+    "genero": 11,
+    "preco": 79.90,
+    "dataLancamento": "2021-02-02T00:00:00Z"
+  },
+  {
+    "titulo": "Animal Well",
+    "descricao": "Metroidvania com foco em exploração e enigmas.",
+    "genero": 1,
+    "preco": 89.90,
+    "dataLancamento": "2024-05-09T00:00:00Z"
+  },
+  {
+    "titulo": "The Plucky Squire",
+    "descricao": "Aventura que alterna entre mundos 2D e 3D.",
+    "genero": 1,
+    "preco": 149.90,
+    "dataLancamento": "2024-09-17T00:00:00Z"
+  },
+  {
+    "titulo": "Shovel Knight: Treasure Trove",
+    "descricao": "Coletânea completa do clássico de plataforma.",
+    "genero": 11,
+    "preco": 79.90,
+    "dataLancamento": "2014-06-26T00:00:00Z"
+  },
+  {
+    "titulo": "Rayman Legends",
+    "descricao": "Plataforma cooperativa com fases criativas.",
+    "genero": 11,
+    "preco": 59.90,
+    "dataLancamento": "2013-08-29T00:00:00Z"
+  },
+  {
+    "titulo": "EA Sports FC 25",
+    "descricao": "Jogo de futebol com clubes e seleções licenciados.",
+    "genero": 4,
+    "preco": 349.90,
+    "dataLancamento": "2024-09-27T00:00:00Z"
+  },
+  {
+    "titulo": "Starfield",
+    "descricao": "RPG espacial da Bethesda com exploração de centenas de planetas.",
+    "genero": 2,
+    "preco": 249.90,
+    "dataLancamento": "2023-09-06T00:00:00Z"
+  },
+  {
+    "titulo": "Mass Effect Legendary Edition",
+    "descricao": "Coletânea remasterizada da trilogia Mass Effect.",
+    "genero": 2,
+    "preco": 159.90,
+    "dataLancamento": "2021-05-14T00:00:00Z"
+  },
+  {
+    "titulo": "Pillars of Eternity II: Deadfire",
+    "descricao": "RPG clássico com grande liberdade de escolhas.",
+    "genero": 2,
+    "preco": 99.90,
+    "dataLancamento": "2018-05-08T00:00:00Z"
+  },
+  {
+    "titulo": "Divinity: Original Sin Enhanced Edition",
+    "descricao": "RPG tático com combate por turnos.",
+    "genero": 2,
+    "preco": 79.90,
+    "dataLancamento": "2015-10-27T00:00:00Z"
+  },
+  {
+    "titulo": "GreedFall",
+    "descricao": "RPG de fantasia inspirado na era das grandes navegações.",
+    "genero": 2,
+    "preco": 89.90,
+    "dataLancamento": "2019-09-10T00:00:00Z"
+  },
+  {
+    "titulo": "Sifu",
+    "descricao": "Jogo de ação focado em artes marciais.",
+    "genero": 0,
+    "preco": 149.90,
+    "dataLancamento": "2022-02-08T00:00:00Z"
+  },
+  {
+    "titulo": "Nioh 2",
+    "descricao": "Ação desafiadora inspirada no folclore japonês.",
+    "genero": 0,
+    "preco": 179.90,
+    "dataLancamento": "2020-03-13T00:00:00Z"
+  },
+  {
+    "titulo": "Wo Long: Fallen Dynasty",
+    "descricao": "Ação baseada na mitologia chinesa.",
+    "genero": 0,
+    "preco": 199.90,
+    "dataLancamento": "2023-03-03T00:00:00Z"
+  },
+  {
+    "titulo": "Metal Gear Rising: Revengeance",
+    "descricao": "Hack and slash estrelado por Raiden.",
+    "genero": 0,
+    "preco": 69.90,
+    "dataLancamento": "2013-02-19T00:00:00Z"
+  },
+  {
+    "titulo": "Sunset Overdrive",
+    "descricao": "Ação em mundo aberto com humor e movimentação dinâmica.",
+    "genero": 0,
+    "preco": 59.90,
+    "dataLancamento": "2014-10-28T00:00:00Z"
+  },
+  {
+    "titulo": "Titanfall 2",
+    "descricao": "FPS com campanha elogiada e combates com mechas.",
+    "genero": 8,
+    "preco": 49.90,
+    "dataLancamento": "2016-10-28T00:00:00Z"
+  },
+  {
+    "titulo": "Far Cry 6",
+    "descricao": "FPS em mundo aberto inspirado em uma ilha caribenha.",
+    "genero": 8,
+    "preco": 99.90,
+    "dataLancamento": "2021-10-07T00:00:00Z"
+  },
+  {
+    "titulo": "Metro Exodus",
+    "descricao": "FPS pós-apocalíptico com elementos de sobrevivência.",
+    "genero": 8,
+    "preco": 79.90,
+    "dataLancamento": "2019-02-15T00:00:00Z"
+  },
+  {
+    "titulo": "Outlast",
+    "descricao": "Terror em primeira pessoa dentro de um manicômio abandonado.",
+    "genero": 11,
+    "preco": 49.90,
+    "dataLancamento": "2013-09-04T00:00:00Z"
+  },
+  {
+    "titulo": "Amnesia: The Bunker",
+    "descricao": "Sobrevivência e terror durante a Primeira Guerra Mundial.",
+    "genero": 11,
+    "preco": 99.90,
+    "dataLancamento": "2023-06-06T00:00:00Z"
+  },
+  {
+    "titulo": "Assetto Corsa Competizione",
+    "descricao": "Simulador oficial da GT World Challenge.",
+    "genero": 5,
+    "preco": 139.90,
+    "dataLancamento": "2019-05-29T00:00:00Z"
+  },
+  {
+    "titulo": "Wreckfest",
+    "descricao": "Corridas com destruição realista de veículos.",
+    "genero": 5,
+    "preco": 79.90,
+    "dataLancamento": "2018-06-14T00:00:00Z"
+  },
+  {
+    "titulo": "Humankind",
+    "descricao": "Estratégia por turnos focada na evolução das civilizações.",
+    "genero": 3,
+    "preco": 129.90,
+    "dataLancamento": "2021-08-17T00:00:00Z"
+  },
+  {
+    "titulo": "Crusader Kings III",
+    "descricao": "Grande estratégia medieval baseada em dinastias.",
+    "genero": 3,
+    "preco": 159.90,
+    "dataLancamento": "2020-09-01T00:00:00Z"
+  },
+  {
+    "titulo": "Planet Zoo",
+    "descricao": "Gerencie e construa um zoológico moderno.",
+    "genero": 6,
+    "preco": 119.90,
+    "dataLancamento": "2019-11-05T00:00:00Z"
+  },
+  {
+    "titulo": "Microsoft Flight Simulator",
+    "descricao": "Simulação de voo extremamente realista.",
+    "genero": 6,
+    "preco": 249.90,
+    "dataLancamento": "2020-08-18T00:00:00Z"
+  },
+  {
+    "titulo": "Portal 2",
+    "descricao": "Resolva enigmas utilizando portais.",
+    "genero": 7,
+    "preco": 39.90,
+    "dataLancamento": "2011-04-19T00:00:00Z"
+  },
+  {
+    "titulo": "The Talos Principle 2",
+    "descricao": "Puzzle filosófico em primeira pessoa.",
+    "genero": 7,
+    "preco": 149.90,
+    "dataLancamento": "2023-11-02T00:00:00Z"
+  },
+  {
+    "titulo": "League of Legends",
+    "descricao": "MOBA competitivo com dezenas de campeões.",
+    "genero": 9,
+    "preco": 0.00,
+    "dataLancamento": "2009-10-27T00:00:00Z"
+  },
+  {
+    "titulo": "Dota 2",
+    "descricao": "MOBA estratégico desenvolvido pela Valve.",
+    "genero": 9,
+    "preco": 0.00,
+    "dataLancamento": "2013-07-09T00:00:00Z"
+  },
+  {
+    "titulo": "Smite 2",
+    "descricao": "MOBA em terceira pessoa baseado em mitologias.",
+    "genero": 9,
+    "preco": 0.00,
+    "dataLancamento": "2024-08-27T00:00:00Z"
+  },
+  {
+    "titulo": "Kerbal Space Program",
+    "descricao": "Construa foguetes e aprenda conceitos de física orbital.",
+    "genero": 10,
+    "preco": 99.90,
+    "dataLancamento": "2015-04-27T00:00:00Z"
+  },
+  {
+    "titulo": "Human Resource Machine",
+    "descricao": "Puzzle que ensina lógica de programação.",
+    "genero": 10,
+    "preco": 39.90,
+    "dataLancamento": "2015-10-15T00:00:00Z"
+  },
+  {
+    "titulo": "Game Builder Garage",
+    "descricao": "Ferramenta educativa para aprender desenvolvimento de jogos.",
+    "genero": 10,
+    "preco": 149.90,
+    "dataLancamento": "2021-06-11T00:00:00Z"
+  },
+  {
+    "titulo": "It Takes Two",
+    "descricao": "Aventura cooperativa premiada focada em trabalho em equipe.",
+    "genero": 1,
+    "preco": 159.90,
+    "dataLancamento": "2021-03-26T00:00:00Z"
+  }
+]

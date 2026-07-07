@@ -1,0 +1,242 @@
+[
+  {
+    "sku": "GAME-RPG",
+    "name": "RPG",
+    "description": "Catálogo de jogos de RPG.",
+    "price": 19.99,
+    "stock": 42,
+    "createdAt": "2026-07-01T08:00:00Z"
+  },
+  {
+    "sku": "GAME-ACTION",
+    "name": "Ação",
+    "description": "Catálogo de jogos de ação.",
+    "price": 29.5,
+    "stock": 12,
+    "createdAt": "2026-07-01T09:00:00Z"
+  },
+  {
+    "sku": "GAME-ADVENTURE",
+    "name": "Aventura",
+    "description": "Catálogo de jogos de aventura.",
+    "price": 45.0,
+    "stock": 5,
+    "createdAt": "2026-07-01T10:00:00Z"
+  },
+  {
+    "sku": "GAME-FPS",
+    "name": "FPS",
+    "description": "Catálogo de jogos de tiro em primeira pessoa.",
+    "price": 12.75,
+    "stock": 100,
+    "createdAt": "2026-07-01T11:00:00Z"
+  },
+  {
+    "sku": "GAME-TPS",
+    "name": "TPS",
+    "description": "Catálogo de jogos de tiro em terceira pessoa.",
+    "price": 199.9,
+    "stock": 3,
+    "createdAt": "2026-07-01T12:00:00Z"
+  },
+  {
+    "sku": "GAME-STRATEGY",
+    "name": "Estratégia",
+    "description": "Catálogo de jogos de estratégia.",
+    "price": 5.0,
+    "stock": 250,
+    "createdAt": "2026-07-02T08:00:00Z"
+  },
+  {
+    "sku": "GAME-TURN-BASED",
+    "name": "RPG por Turnos",
+    "description": "Catálogo de RPGs com combate por turnos.",
+    "price": 75.25,
+    "stock": 18,
+    "createdAt": "2026-07-02T09:00:00Z"
+  },
+  {
+    "sku": "GAME-OPENWORLD",
+    "name": "Mundo Aberto",
+    "description": "Catálogo de jogos de mundo aberto.",
+    "price": 34.99,
+    "stock": 60,
+    "createdAt": "2026-07-02T10:00:00Z"
+  },
+  {
+    "sku": "GAME-SURVIVAL",
+    "name": "Sobrevivência",
+    "description": "Catálogo de jogos de sobrevivência.",
+    "price": 9.5,
+    "stock": 420,
+    "createdAt": "2026-07-02T11:00:00Z"
+  },
+  {
+    "sku": "GAME-HORROR",
+    "name": "Terror",
+    "description": "Catálogo de jogos de terror.",
+    "price": 149.99,
+    "stock": 8,
+    "createdAt": "2026-07-02T12:00:00Z"
+  },
+  {
+    "sku": "MOV-ACTION",
+    "name": "Filmes de Ação",
+    "description": "Catálogo de filmes de ação.",
+    "price": 22.22,
+    "stock": 33,
+    "createdAt": "2026-07-03T08:00:00Z"
+  },
+  {
+    "sku": "MOV-SCIFI",
+    "name": "Filmes de Ficção Científica",
+    "description": "Catálogo de filmes de ficção científica.",
+    "price": 55.55,
+    "stock": 21,
+    "createdAt": "2026-07-03T09:00:00Z"
+  },
+  {
+    "sku": "MOV-FANTASY",
+    "name": "Filmes de Fantasia",
+    "description": "Catálogo de filmes de fantasia.",
+    "price": 3.99,
+    "stock": 500,
+    "createdAt": "2026-07-03T10:00:00Z"
+  },
+  {
+    "sku": "MOV-HORROR",
+    "name": "Filmes de Terror",
+    "description": "Catálogo de filmes de terror.",
+    "price": 250.0,
+    "stock": 2,
+    "createdAt": "2026-07-03T11:00:00Z"
+  },
+  {
+    "sku": "MOV-ANIMATION",
+    "name": "Filmes de Animação",
+    "description": "Catálogo de filmes de animação.",
+    "price": 18.0,
+    "stock": 77,
+    "createdAt": "2026-07-03T12:00:00Z"
+  },
+  {
+    "sku": "SER-DRAMA",
+    "name": "Séries de Drama",
+    "description": "Catálogo de séries de drama.",
+    "price": 88.88,
+    "stock": 14,
+    "createdAt": "2026-07-04T08:00:00Z"
+  },
+  {
+    "sku": "SER-COMEDY",
+    "name": "Séries de Comédia",
+    "description": "Catálogo de séries de comédia.",
+    "price": 120.0,
+    "stock": 6,
+    "createdAt": "2026-07-04T09:00:00Z"
+  },
+  {
+    "sku": "SER-CRIME",
+    "name": "Séries Policiais",
+    "description": "Catálogo de séries policiais.",
+    "price": 7.49,
+    "stock": 190,
+    "createdAt": "2026-07-04T10:00:00Z"
+  },
+  {
+    "sku": "SER-DOCUMENTARY",
+    "name": "Séries Documentais",
+    "description": "Catálogo de séries documentais.",
+    "price": 64.0,
+    "stock": 27,
+    "createdAt": "2026-07-04T11:00:00Z"
+  },
+  {
+    "sku": "SER-SUPERHERO",
+    "name": "Séries de Super-Heróis",
+    "description": "Catálogo de séries de super-heróis.",
+    "price": 39.99,
+    "stock": 40,
+    "createdAt": "2026-07-04T12:00:00Z"
+  },
+  {
+    "sku": "ANI-SHONEN",
+    "name": "Shonen",
+    "description": "Catálogo de animes shonen.",
+    "price": 14.3,
+    "stock": 65,
+    "createdAt": "2026-07-05T08:00:00Z"
+  },
+  {
+    "sku": "ANI-SHOJO",
+    "name": "Shojo",
+    "description": "Catálogo de animes shojo.",
+    "price": 27.0,
+    "stock": 9,
+    "createdAt": "2026-07-05T09:00:00Z"
+  },
+  {
+    "sku": "ANI-SEINEN",
+    "name": "Seinen",
+    "description": "Catálogo de animes seinen.",
+    "price": 199.0,
+    "stock": 1,
+    "createdAt": "2026-07-05T10:00:00Z"
+  },
+  {
+    "sku": "ANI-ISEKAI",
+    "name": "Isekai",
+    "description": "Catálogo de animes isekai.",
+    "price": 6.66,
+    "stock": 300,
+    "createdAt": "2026-07-05T11:00:00Z"
+  },
+  {
+    "sku": "ANI-MECHA",
+    "name": "Mecha",
+    "description": "Catálogo de animes mecha.",
+    "price": 11.11,
+    "stock": 88,
+    "createdAt": "2026-07-05T12:00:00Z"
+  },
+  {
+    "sku": "ANI-SLICEOFLIFE",
+    "name": "Slice of Life",
+    "description": "Catálogo de animes slice of life.",
+    "price": 300.0,
+    "stock": 0,
+    "createdAt": "2026-07-06T08:00:00Z"
+  },
+  {
+    "sku": "ANI-ROMANCE",
+    "name": "Romance",
+    "description": "Catálogo de animes de romance.",
+    "price": 45.9,
+    "stock": 7,
+    "createdAt": "2026-07-06T09:00:00Z"
+  },
+  {
+    "sku": "ANI-FANTASY",
+    "name": "Fantasia",
+    "description": "Catálogo de animes de fantasia.",
+    "price": 59.99,
+    "stock": 24,
+    "createdAt": "2026-07-06T10:00:00Z"
+  },
+  {
+    "sku": "ANI-SCIFI",
+    "name": "Ficção Científica",
+    "description": "Catálogo de animes de ficção científica.",
+    "price": 2.5,
+    "stock": 999,
+    "createdAt": "2026-07-06T11:00:00Z"
+  },
+  {
+    "sku": "ANI-SPORTS",
+    "name": "Esportes",
+    "description": "Catálogo de animes de esportes.",
+    "price": 9.99,
+    "stock": 150,
+    "createdAt": "2026-07-06T12:00:00Z"
+  }
+]
