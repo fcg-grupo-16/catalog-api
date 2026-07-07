@@ -13,16 +13,14 @@ public sealed class JogoRepository(AppDbContext context) : IJogoRepository
 
     public async Task<IEnumerable<Jogo>> ObterTodosAsync(int pagina, int tamanhoPagina, CancellationToken ct = default) =>
         await context.Jogos
-            .Skip((pagina - 1) * tamanhoPagina)
-            .Take(tamanhoPagina)
             .ToListAsync(ct);
 
     public async Task<IEnumerable<Jogo>> BuscarPorGeneroAsync(GeneroJogo genero, int pagina, int tamanhoPagina, CancellationToken ct = default) =>
         await context.Jogos
             .Where(j => j.Genero == genero)
-            .Skip((pagina - 1) * tamanhoPagina)
-            .Take(tamanhoPagina)
             .ToListAsync(ct);
+
+    public IEnumerable<Jogo> AplicaFiltro(IEnumerable<Jogo> jogos, int pagina, int tamanhoPagina, CancellationToken ct = default) => jogos.Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina).ToList();
 
     public async Task CriarAsync(Jogo jogo, CancellationToken ct = default)
     {
@@ -54,4 +52,5 @@ public sealed class JogoRepository(AppDbContext context) : IJogoRepository
 
     public async Task<bool> TituloExisteAsync(string titulo, CancellationToken ct = default) =>
         await context.Jogos.AnyAsync(j => j.Titulo == titulo, ct);
+
 }

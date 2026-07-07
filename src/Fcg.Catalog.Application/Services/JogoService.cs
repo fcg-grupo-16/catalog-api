@@ -58,9 +58,10 @@ public sealed class JogoService(IJogoRepository jogoRepository) : IJogoService
             ? await jogoRepository.BuscarPorGeneroAsync(genero.Value, pagina, tamanhoPagina, ct)
             : await jogoRepository.ObterTodosAsync(pagina, tamanhoPagina, ct);
 
-        var itens = jogos.Select(MapToDto).ToList();
 
-        return new PaginacaoResponseDto<JogoResponseDto>(itens, pagina, tamanhoPagina, itens.Count);
+        var itens = jogoRepository.AplicaFiltro(jogos, pagina, tamanhoPagina, ct).Select(MapToDto).ToList();
+
+        return new PaginacaoResponseDto<JogoResponseDto>(itens, pagina, tamanhoPagina, jogos.Count());
     }
 
     public async Task<JogoResponseDto> AtualizarAsync(string id, AtualizarJogoRequestDto dto, CancellationToken ct = default)
