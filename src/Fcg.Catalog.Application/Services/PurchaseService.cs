@@ -1,4 +1,5 @@
 using Fcg.Catalog.Application.Interfaces;
+using Fcg.Catalog.Domain.Entities;
 using Fcg.Catalog.Domain.Exceptions;
 using Fcg.Catalog.Domain.Repositories;
 using Fcg.Contracts.Events;
@@ -8,9 +9,10 @@ namespace Fcg.Catalog.Application.Services;
 public sealed class PurchaseService(
     IJogoRepository jogoRepository,
     IBibliotecaRepository bibliotecaRepository,
+    IPedidoRepository pedidoRepository,
     IEventPublisher eventPublisher) : IPurchaseService
 {
-    public async Task IniciarCompraAsync(string usuarioId, string jogoId, CancellationToken ct = default)
+    public async Task<string> IniciarCompraAsync(string usuarioId, string jogoId, CancellationToken ct = default)
     {
         var jogo = await jogoRepository.ObterPorIdAsync(jogoId, ct)
             ?? throw new EntidadeNaoEncontradaException("Jogo", jogoId);
@@ -25,8 +27,9 @@ public sealed class PurchaseService(
             throw new ConflitoDeDadosException($"O usuário já possui o jogo '{jogo.Titulo}' em sua biblioteca.");
         }
 
-        var orderId = Guid.NewGuid();
-
+        var orderId = Guid.NewGuid().ToString();
+        var pedido = new Pedido(orderId, usuarioId, jogoId, jogo.Preco.Valor);
+        await pedidoRepository.CriarAsync(pedido);
         await eventPublisher.PublishAsync(
             new OrderPlacedEvent
             {
@@ -36,5 +39,7 @@ public sealed class PurchaseService(
                 Price = jogo.Preco.Valor
             },
             ct);
+
+        return orderId;
     }
 }

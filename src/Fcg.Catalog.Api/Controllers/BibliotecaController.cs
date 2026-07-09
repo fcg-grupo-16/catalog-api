@@ -56,9 +56,9 @@ public sealed class BibliotecaController(
     {
         var usuarioId = ObterUsuarioId();
 
-        await purchaseService.IniciarCompraAsync(usuarioId, dto.JogoId, ct);
+      string orderId = await purchaseService.IniciarCompraAsync(usuarioId, dto.JogoId, ct);
 
-        return Accepted();
+        return Accepted(orderId);
     }
 
     private string ObterUsuarioId() =>
