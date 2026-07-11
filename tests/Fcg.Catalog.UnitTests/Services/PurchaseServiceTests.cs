@@ -15,12 +15,13 @@ public class PurchaseServiceTests
 {
     private readonly Mock<IJogoRepository> _jogoMock = new();
     private readonly Mock<IBibliotecaRepository> _bibliotecaMock = new();
+    private readonly Mock<IPedidoRepository> _pedidoMock = new();
     private readonly Mock<IEventPublisher> _publisherMock = new();
     private readonly PurchaseService _service;
 
     public PurchaseServiceTests()
     {
-        _service = new PurchaseService(_jogoMock.Object, _bibliotecaMock.Object, _publisherMock.Object);
+        _service = new PurchaseService(_jogoMock.Object, _bibliotecaMock.Object, _pedidoMock.Object, _publisherMock.Object);
     }
 
     private static Jogo CriarJogoAtivo() =>
@@ -42,7 +43,7 @@ public class PurchaseServiceTests
                 e.UserId == "usuario-id" &&
                 e.GameId == "jogo-id" &&
                 e.Price == 59.90m &&
-                e.OrderId != Guid.Empty),
+                e.OrderId != String.Empty),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
