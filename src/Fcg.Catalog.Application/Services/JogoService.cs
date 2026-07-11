@@ -25,6 +25,30 @@ public sealed class JogoService(IJogoRepository jogoRepository) : IJogoService
         return MapToDto(jogo);
     }
 
+
+
+    public async Task InserirLoteAsync(List<CriarJogoRequestDto> listaDto, CancellationToken ct = default)
+    {
+        List<Jogo> listaJogos = new List<Jogo>();
+
+        foreach (var jogoDto in listaDto)
+        {
+            if (await jogoRepository.TituloExisteAsync(jogoDto.Titulo, ct))
+            {
+                continue;
+            }
+            listaJogos.Add(new Jogo(jogoDto.Titulo, jogoDto.Descricao, jogoDto.Genero, new Preco(jogoDto.Preco), jogoDto.DataLancamento));
+        }
+
+        if (listaJogos.Count < 1)
+        {
+            throw new ConflitoDeDadosException("Os jogos na lista ja estão presentes na base de dados.");
+        }
+
+        await jogoRepository.CriarLote(listaJogos, ct);
+    }
+
+
     public async Task<JogoResponseDto> ObterPorIdAsync(string id, CancellationToken ct = default)
     {
         var jogo = await jogoRepository.ObterPorIdAsync(id, ct)
@@ -35,13 +59,17 @@ public sealed class JogoService(IJogoRepository jogoRepository) : IJogoService
 
     public async Task<PaginacaoResponseDto<JogoResponseDto>> ListarAsync(int pagina, int tamanhoPagina, GeneroJogo? genero, CancellationToken ct = default)
     {
-        var jogos = genero.HasValue
+        IEnumerable<Jogo> jogos = genero.HasValue
             ? await jogoRepository.BuscarPorGeneroAsync(genero.Value, pagina, tamanhoPagina, ct)
             : await jogoRepository.ObterTodosAsync(pagina, tamanhoPagina, ct);
 
+        int contagem = genero.HasValue
+            ? await jogoRepository.ContagemTotalJogosGenero(genero.Value, ct)
+            : await jogoRepository.ContagemTotalJogos(ct);
+
         var itens = jogos.Select(MapToDto).ToList();
 
-        return new PaginacaoResponseDto<JogoResponseDto>(itens, pagina, tamanhoPagina, itens.Count);
+        return new PaginacaoResponseDto<JogoResponseDto>(itens, pagina, tamanhoPagina, contagem);
     }
 
     public async Task<JogoResponseDto> AtualizarAsync(string id, AtualizarJogoRequestDto dto, CancellationToken ct = default)

@@ -19,6 +19,7 @@ namespace Fcg.Catalog.Api.Controllers;
 public sealed class JogosController(
     IJogoService jogoService,
     IValidator<CriarJogoRequestDto> criarValidator,
+    IValidator<List<CriarJogoRequestDto>> criarListValidator,
     IValidator<AtualizarJogoRequestDto> atualizarValidator) : ControllerBase
 {
     /// <summary>
@@ -68,7 +69,7 @@ public sealed class JogosController(
     /// </summary>
     /// <param name="dto">Dados do novo jogo.</param>
     /// <param name="ct">Token de cancelamento.</param>
-    /// <returns>Jogo criado.</returns>
+    /// <returns>Jogo novo inserido na base.</returns>
     /// <response code="201">Jogo criado com sucesso.</response>
     /// <response code="409">Título já cadastrado.</response>
     /// <response code="422">Dados de validação inválidos.</response>
@@ -84,6 +85,27 @@ public sealed class JogosController(
         var resultado = await jogoService.CriarAsync(dto, ct);
 
         return CreatedAtAction(nameof(ObterPorId), new { id = resultado.Id }, resultado);
+    }
+
+    /// <summary>
+    /// Cadastrar novos jogos em lote.
+    /// </summary>
+    /// <param name="listaDto">Dados dos novos jogos a serem inseridos em lote.</param>
+    /// <param name="ct">Token de cancelamento.</param>
+    /// <returns>Jogos novos inseridos na base.</returns>
+    /// <response code="201">Jogos inseridos na base com sucesso.</response>
+    /// <response code="409">Títulos já cadastrados.</response>
+    /// <response code="422">Dados de validação inválidos.</response>
+    [HttpPost("InserirLote")]
+    [Authorize(Policy = "ApenasAdmin")]
+    [ProducesResponseType(typeof(JogoResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> InserirLote([FromBody] List<CriarJogoRequestDto> listaDto, CancellationToken ct)
+    {
+        await criarListValidator.ValidarAsync(listaDto, ct);
+        await jogoService.InserirLoteAsync(listaDto, ct);
+        return StatusCode(201);
     }
 
     /// <summary>

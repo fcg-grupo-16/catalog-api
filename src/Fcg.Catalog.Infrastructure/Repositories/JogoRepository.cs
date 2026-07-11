@@ -13,20 +13,24 @@ public sealed class JogoRepository(AppDbContext context) : IJogoRepository
 
     public async Task<IEnumerable<Jogo>> ObterTodosAsync(int pagina, int tamanhoPagina, CancellationToken ct = default) =>
         await context.Jogos
-            .Skip((pagina - 1) * tamanhoPagina)
-            .Take(tamanhoPagina)
-            .ToListAsync(ct);
+        .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina)
+        .ToListAsync(ct);
 
     public async Task<IEnumerable<Jogo>> BuscarPorGeneroAsync(GeneroJogo genero, int pagina, int tamanhoPagina, CancellationToken ct = default) =>
         await context.Jogos
             .Where(j => j.Genero == genero)
-            .Skip((pagina - 1) * tamanhoPagina)
-            .Take(tamanhoPagina)
+            .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina)
             .ToListAsync(ct);
 
     public async Task CriarAsync(Jogo jogo, CancellationToken ct = default)
     {
         context.Jogos.Add(jogo);
+        await context.SaveChangesAsync(ct);
+    }
+
+    public async Task CriarLote(IEnumerable<Jogo> jogos, CancellationToken ct = default)
+    {
+        context.Jogos.AddRange(jogos);
         await context.SaveChangesAsync(ct);
     }
 
@@ -48,4 +52,11 @@ public sealed class JogoRepository(AppDbContext context) : IJogoRepository
 
     public async Task<bool> TituloExisteAsync(string titulo, CancellationToken ct = default) =>
         await context.Jogos.AnyAsync(j => j.Titulo == titulo, ct);
+
+    public async Task<int> ContagemTotalJogos(CancellationToken ct = default) =>
+        await context.Jogos.CountAsync();
+    public async Task<int> ContagemTotalJogosGenero(GeneroJogo genero, CancellationToken ct = default) =>
+        await context.Jogos
+            .Where(j => j.Genero == genero)
+            .CountAsync();
 }

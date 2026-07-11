@@ -11,6 +11,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Jogo> Jogos => Set<Jogo>();
     public DbSet<BibliotecaJogo> BibliotecaJogos => Set<BibliotecaJogo>();
 
+    public DbSet<Pedido> Pedidos => Set<Pedido>();
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         Database.AutoTransactionBehavior = AutoTransactionBehavior.Never;
