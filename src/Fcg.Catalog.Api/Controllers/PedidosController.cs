@@ -24,10 +24,10 @@ public sealed class PedidosController : Controller
     [HttpGet("{orderId:guid}")]
     public async Task<IActionResult> ObterPorId(string orderId, CancellationToken ct)
     {
-        var pedido = await pedidoService.ObterPorOrderIdAsync(orderId, ct); // 404 se não existir
+        var pedido = await pedidoService.ObterPorOrderIdAsync(orderId, ct); 
         var usuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isAdmin = User.IsInRole("Administrador");
-        if (!isAdmin && pedido.UserId != usuarioId) throw new AcessoNegadoException(); // dono ou admin
+        if (!isAdmin && pedido.UserId != usuarioId) throw new AcessoNegadoException(); 
         return Ok(pedido);
     }
 }
