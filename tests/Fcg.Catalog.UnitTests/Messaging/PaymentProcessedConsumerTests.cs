@@ -67,6 +67,20 @@ public class PaymentProcessedConsumerTests
     }
 
     [Fact]
+    public async Task Consume_DeveLancar_QuandoPedidoNaoEncontrado()
+    {
+        var orderId = Guid.NewGuid();
+        _pedidoMock.Setup(r => r.ObterPorOrderIdAsync(orderId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pedido?)null);
+
+        var evt = new PaymentProcessedEvent { OrderId = orderId, UserId = "u", GameId = "g", Price = 10m, Status = "Approved" };
+        var act = () => _consumer.Consume(Ctx(evt));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _bibliotecaMock.Verify(r => r.AdicionarJogoAsync(It.IsAny<BibliotecaJogo>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Consume_DeveSerIdempotente_QuandoPedidoNaoEstaPending()
     {
         var orderId = Guid.NewGuid();

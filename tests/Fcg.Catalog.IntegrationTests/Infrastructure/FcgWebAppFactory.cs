@@ -25,8 +25,9 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
         .WithReplicaSet("rs0")
         .Build();
 
+    // Sem bind fixo de porta: usa o mapeamento dinâmico do Testcontainers (evita conflito na 5672
+    // com o compose local ou execuções paralelas). A porta é injetada em RabbitMq:Port.
     private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("rabbitmq:3-management")
-        .WithPortBinding(5672, 5672)
         .WithUsername(RabbitUsername)
         .WithPassword(RabbitPassword)
         .Build();
@@ -45,6 +46,7 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
         builder.UseSetting("MongoDbSettings:ConnectionString", _mongoConnectionString ?? _mongo.GetConnectionString());
         builder.UseSetting("MongoDbSettings:DatabaseName", _databaseName);
         builder.UseSetting("RabbitMq:Host", "localhost");
+        builder.UseSetting("RabbitMq:Port", _rabbit.GetMappedPublicPort(5672).ToString());
         builder.UseSetting("RabbitMq:Username", RabbitUsername);
         builder.UseSetting("RabbitMq:Password", RabbitPassword);
         builder.UseSetting("JwtSettings:SecretKey", JwtSecret);

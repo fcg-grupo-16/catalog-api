@@ -120,7 +120,17 @@ public static class ServiceCollectionExtensions
                 var host = configuration["RabbitMq:Host"] ?? "localhost";
                 var user = configuration["RabbitMq:Username"] ?? "guest";
                 var pass = configuration["RabbitMq:Password"] ?? "guest";
-                cfg.Host(host, "/", h => { h.Username(user); h.Password(pass); });
+
+                // Porta opcional (RabbitMq:Port) — permite porta dinâmica em testes de integração;
+                // sem ela, usa a porta padrão do AMQP (5672).
+                if (ushort.TryParse(configuration["RabbitMq:Port"], out var port))
+                {
+                    cfg.Host(host, port, "/", h => { h.Username(user); h.Password(pass); });
+                }
+                else
+                {
+                    cfg.Host(host, "/", h => { h.Username(user); h.Password(pass); });
+                }
 
                 // Política de retry: até 5 tentativas em memória (5s de intervalo). Esgotadas
                 // as tentativas, o MassTransit move a mensagem para a fila _error (dead-letter).

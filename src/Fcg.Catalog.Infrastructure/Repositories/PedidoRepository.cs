@@ -26,12 +26,22 @@ public sealed class PedidoRepository : IPedidoRepository
         _mongoDbContext = mongoDbContext;
         _pedidos = mongoDatabase.GetCollection<PedidoDocument>("pedidos");
 
-        // Índice único em OrderId (chave de correlação). Criado uma vez por processo.
-        if (Interlocked.Exchange(ref _indexEnsured, 1) == 0)
+        // Índice único em OrderId (chave de correlação). Criado uma vez por processo; em caso de
+        // falha transitória, o flag é revertido para permitir nova tentativa numa próxima resolução.
+        if (Interlocked.CompareExchange(ref _indexEnsured, 1, 0) == 0)
         {
-            _pedidos.Indexes.CreateOne(new CreateIndexModel<PedidoDocument>(
-                Builders<PedidoDocument>.IndexKeys.Ascending(d => d.OrderId),
-                new CreateIndexOptions { Unique = true }));
+            try
+            {
+                _pedidos.Indexes.CreateOne(new CreateIndexModel<PedidoDocument>(
+                    Builders<PedidoDocument>.IndexKeys.Ascending(d => d.OrderId),
+                    new CreateIndexOptions { Unique = true }));
+            }
+            catch
+            {
+                // Índice é best-effort (OrderId é um GUID sem colisão): não falha a requisição;
+                // reverte o flag para tentar novamente numa próxima resolução do repositório.
+                Interlocked.Exchange(ref _indexEnsured, 0);
+            }
         }
     }
 

@@ -20,16 +20,18 @@ public sealed class PaymentProcessedConsumer(
         var ct = context.CancellationToken;
         var aprovado = string.Equals(evt.Status, StatusAprovado, StringComparison.OrdinalIgnoreCase);
 
-        // Atualiza o status do pedido (idempotente: só transiciona a partir de Pending,
-        // evitando reprocessar em caso de redelivery).
         var pedido = await pedidoRepository.ObterPorOrderIdAsync(evt.OrderId.ToString(), ct);
         if (pedido is null)
         {
-            logger.LogWarning(
-                "PaymentProcessedEvent recebido para o OrderId {OrderId} sem Pedido correspondente na base.",
-                evt.OrderId);
+            // O outbox garante que o Pedido é gravado antes de o OrderPlacedEvent ser publicado,
+            // então a ausência aqui é uma anomalia de correlação: lança para retry/dead-letter em
+            // vez de mascarar o problema (e evita side-effects sem pedido correspondente).
+            throw new InvalidOperationException(
+                $"PaymentProcessedEvent para OrderId {evt.OrderId} sem Pedido correspondente na base.");
         }
-        else if (pedido.Status == StatusPedido.Pending)
+
+        // Transição de status idempotente: só a partir de Pending (evita reprocessar em redelivery).
+        if (pedido.Status == StatusPedido.Pending)
         {
             if (aprovado)
             {
@@ -43,11 +45,13 @@ public sealed class PaymentProcessedConsumer(
             await pedidoRepository.AtualizarAsync(pedido, ct);
         }
 
-        if (!aprovado)
+        // Side-effects na biblioteca só quando o pedido está EFETIVAMENTE aprovado — evita
+        // inconsistência caso chegue um evento Approved para um pedido já Rejected.
+        if (pedido.Status != StatusPedido.Approved)
         {
             logger.LogInformation(
-                "Pagamento rejeitado para o pedido {OrderId} (usuário {UserId}, jogo {GameId}). Nenhuma ação na biblioteca.",
-                evt.OrderId, evt.UserId, evt.GameId);
+                "Pedido {OrderId} não aprovado (status {Status}). Nenhuma ação na biblioteca.",
+                evt.OrderId, pedido.Status);
             return;
         }
 

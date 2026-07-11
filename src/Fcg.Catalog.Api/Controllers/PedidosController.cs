@@ -29,9 +29,10 @@ public sealed class PedidosController(IPedidoService pedidoService) : Controller
     [ProducesResponseType(typeof(PedidoResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ObterPorId(string orderId, CancellationToken ct)
+    public async Task<IActionResult> ObterPorId(Guid orderId, CancellationToken ct)
     {
-        var pedido = await pedidoService.ObterPorOrderIdAsync(orderId, ct);
+        // Guid garante a representação canônica (minúsculas, formato "D") na consulta por string.
+        var pedido = await pedidoService.ObterPorOrderIdAsync(orderId.ToString(), ct);
 
         var usuarioId = ObterUsuarioId();
         if (!User.IsInRole("Administrador") && pedido.UserId != usuarioId)
