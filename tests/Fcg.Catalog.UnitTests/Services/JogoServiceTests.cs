@@ -173,4 +173,55 @@ public class JogoServiceTests
 
         await act.Should().ThrowAsync<EntidadeNaoEncontradaException>();
     }
+
+    [Fact]
+    public async Task InserirLoteAsync_DeveInserirApenasNovos_IgnorandoExistentes()
+    {
+        var dtos = new List<CriarJogoRequestDto>
+        {
+            new("Novo A", "d", GeneroJogo.RPG, 10, DateTime.Now),
+            new("Existente", "d", GeneroJogo.Acao, 20, DateTime.Now),
+            new("Novo B", "d", GeneroJogo.FPS, 30, DateTime.Now),
+        };
+        _repositoryMock.Setup(r => r.TitulosExistentesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { "Existente" });
+
+        var result = await _service.InserirLoteAsync(dtos);
+
+        result.Should().HaveCount(2);
+        result.Select(r => r.Titulo).Should().BeEquivalentTo(new[] { "Novo A", "Novo B" });
+        _repositoryMock.Verify(r => r.CriarLote(It.Is<IEnumerable<Jogo>>(j => j.Count() == 2), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task InserirLoteAsync_DeveDeduplicarTitulosRepetidosDentroDoLote()
+    {
+        var dtos = new List<CriarJogoRequestDto>
+        {
+            new("Repetido", "d", GeneroJogo.RPG, 10, DateTime.Now),
+            new("Repetido", "d", GeneroJogo.RPG, 10, DateTime.Now),
+        };
+        _repositoryMock.Setup(r => r.TitulosExistentesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string>());
+
+        var result = await _service.InserirLoteAsync(dtos);
+
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task InserirLoteAsync_DeveLancarConflito_QuandoTodosJaExistem()
+    {
+        var dtos = new List<CriarJogoRequestDto>
+        {
+            new("Existente", "d", GeneroJogo.RPG, 10, DateTime.Now),
+        };
+        _repositoryMock.Setup(r => r.TitulosExistentesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { "Existente" });
+
+        var act = () => _service.InserirLoteAsync(dtos);
+
+        await act.Should().ThrowAsync<ConflitoDeDadosException>();
+        _repositoryMock.Verify(r => r.CriarLote(It.IsAny<IEnumerable<Jogo>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

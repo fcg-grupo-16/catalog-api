@@ -21,7 +21,23 @@ public class Pedido
         Status = StatusPedido.Pending;
         DataCriacao = DataAtualizacao = DateTime.UtcNow;
     }
-    private Pedido() { Id = string.Empty; UserId = string.Empty; GameId = string.Empty; }
+    private Pedido() { Id = string.Empty; OrderId = string.Empty; UserId = string.Empty; GameId = string.Empty; }
+
+    /// <summary>Reidrata um Pedido a partir da persistência (não gera novos valores).</summary>
+    public static Pedido Restaurar(
+        string id, string orderId, string userId, string gameId,
+        decimal price, StatusPedido status, DateTime dataCriacao, DateTime dataAtualizacao) =>
+        new()
+        {
+            Id = id,
+            OrderId = orderId,
+            UserId = userId,
+            GameId = gameId,
+            Price = price,
+            Status = status,
+            DataCriacao = dataCriacao,
+            DataAtualizacao = dataAtualizacao
+        };
 
     public void Aprovar() { Status = StatusPedido.Approved; DataAtualizacao = DateTime.UtcNow; }
     public void Rejeitar() { Status = StatusPedido.Rejected; DataAtualizacao = DateTime.UtcNow; }

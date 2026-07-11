@@ -24,5 +24,15 @@ jobs:
       - name: Build
         run: dotnet build -c Release --no-restore
 
+      - name: Security scan (pacotes vulneráveis)
+        run: |
+          set -euo pipefail
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee vuln-report.txt
+          if grep -q "has the following vulnerable packages" vuln-report.txt; then
+            echo "::error::Foram encontrados pacotes com vulnerabilidades conhecidas."
+            exit 1
+          fi
+          echo "Nenhum pacote vulnerável encontrado."
+
       - name: Test
         run: dotnet test -c Release --no-build

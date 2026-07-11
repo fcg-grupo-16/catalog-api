@@ -27,25 +27,27 @@ public sealed class JogoService(IJogoRepository jogoRepository) : IJogoService
 
 
 
-    public async Task InserirLoteAsync(List<CriarJogoRequestDto> listaDto, CancellationToken ct = default)
+    public async Task<IReadOnlyList<JogoResponseDto>> InserirLoteAsync(List<CriarJogoRequestDto> listaDto, CancellationToken ct = default)
     {
-        List<Jogo> listaJogos = new List<Jogo>();
+        // Verificação de duplicidade em uma única consulta (evita N+1) e dedup dentro do lote.
+        var titulos = listaDto.Select(d => d.Titulo).ToList();
+        var existentes = (await jogoRepository.TitulosExistentesAsync(titulos, ct)).ToHashSet();
 
-        foreach (var jogoDto in listaDto)
+        var novos = listaDto
+            .Where(d => !existentes.Contains(d.Titulo))
+            .GroupBy(d => d.Titulo)
+            .Select(g => g.First())
+            .Select(d => new Jogo(d.Titulo, d.Descricao, d.Genero, new Preco(d.Preco), d.DataLancamento))
+            .ToList();
+
+        if (novos.Count < 1)
         {
-            if (await jogoRepository.TituloExisteAsync(jogoDto.Titulo, ct))
-            {
-                continue;
-            }
-            listaJogos.Add(new Jogo(jogoDto.Titulo, jogoDto.Descricao, jogoDto.Genero, new Preco(jogoDto.Preco), jogoDto.DataLancamento));
+            throw new ConflitoDeDadosException("Todos os jogos da lista já estão cadastrados na base de dados.");
         }
 
-        if (listaJogos.Count < 1)
-        {
-            throw new ConflitoDeDadosException("Os jogos na lista ja estão presentes na base de dados.");
-        }
+        await jogoRepository.CriarLote(novos, ct);
 
-        await jogoRepository.CriarLote(listaJogos, ct);
+        return novos.Select(MapToDto).ToList();
     }
 
 

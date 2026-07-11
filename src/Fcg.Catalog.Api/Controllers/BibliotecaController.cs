@@ -48,7 +48,7 @@ public sealed class BibliotecaController(
     /// <response code="409">Jogo já adquirido.</response>
     /// <response code="422">Jogo inativo.</response>
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(CompraAceitaResponseDto), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
@@ -56,9 +56,11 @@ public sealed class BibliotecaController(
     {
         var usuarioId = ObterUsuarioId();
 
-      string orderId = await purchaseService.IniciarCompraAsync(usuarioId, dto.JogoId, ct);
+        var orderId = await purchaseService.IniciarCompraAsync(usuarioId, dto.JogoId, ct);
 
-        return Accepted(orderId);
+        // Retorna o id do pedido no CORPO (não no header Location) para o cliente consultar
+        // o status em GET /api/v1/pedidos/{orderId}.
+        return Accepted(new CompraAceitaResponseDto(orderId));
     }
 
     private string ObterUsuarioId() =>

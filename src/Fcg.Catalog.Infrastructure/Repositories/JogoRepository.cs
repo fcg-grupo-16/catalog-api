@@ -53,10 +53,20 @@ public sealed class JogoRepository(AppDbContext context) : IJogoRepository
     public async Task<bool> TituloExisteAsync(string titulo, CancellationToken ct = default) =>
         await context.Jogos.AnyAsync(j => j.Titulo == titulo, ct);
 
+    public async Task<IReadOnlyList<string>> TitulosExistentesAsync(IEnumerable<string> titulos, CancellationToken ct = default)
+    {
+        var lista = titulos.ToList();
+        return await context.Jogos
+            .Where(j => lista.Contains(j.Titulo))
+            .Select(j => j.Titulo)
+            .ToListAsync(ct);
+    }
+
     public async Task<int> ContagemTotalJogos(CancellationToken ct = default) =>
-        await context.Jogos.CountAsync();
+        await context.Jogos.CountAsync(ct);
+
     public async Task<int> ContagemTotalJogosGenero(GeneroJogo genero, CancellationToken ct = default) =>
         await context.Jogos
             .Where(j => j.Genero == genero)
-            .CountAsync();
+            .CountAsync(ct);
 }
