@@ -3,6 +3,9 @@ using Fcg.Catalog.Application.Validators;
 using Fcg.Catalog.Infrastructure.Extensions;
 using Fcg.Catalog.Infrastructure.Seed;
 using FluentValidation;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using MongoDB.Driver;
+using RabbitMQ.Client;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -17,9 +20,19 @@ try
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services));
 
+
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddHealthChecks();
+
+
+
+    var mongoCs = builder.Configuration["MongoDbSettings:ConnectionString"]!;
+    var rabbitUri = $"amqp://{builder.Configuration["RabbitMq:Username"]}:{builder.Configuration["RabbitMq:Password"]}@{builder.Configuration["RabbitMq:Host"]}:5672/";
+
+    builder.Services.AddHealthChecks()
+        .AddMongoDb(sp=> new MongoClient(mongoCs))
+         .AddRabbitMQ(sp => new ConnectionFactory { Uri = new Uri(rabbitUri) }.CreateConnectionAsync(),
+                 name: "rabbitmq", tags: ["ready"]);
 
     builder.Services.AddSwaggerExtension();
     builder.Services.AddValidatorsFromAssemblyContaining<CriarJogoValidator>();
@@ -48,7 +61,15 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
-    app.MapHealthChecks("/health");
+
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = _ => false               // nenhum check de dependencia: so processo vivo
+    });
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ
+    });
 
     try
     {
