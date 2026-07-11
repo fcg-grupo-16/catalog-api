@@ -27,9 +27,14 @@ public sealed class PurchaseService(
             throw new ConflitoDeDadosException($"O usuário já possui o jogo '{jogo.Titulo}' em sua biblioteca.");
         }
 
-        var orderId = Guid.NewGuid().ToString();
-        var pedido = new Pedido(orderId, usuarioId, jogoId, jogo.Preco.Valor);
-        await pedidoRepository.CriarAsync(pedido);
+        var orderId = Guid.NewGuid();
+
+        // Outbox transacional: o Pedido e a mensagem OrderPlacedEvent são gravados no MESMO
+        // SaveChanges (SalvarAlteracoesAsync) — ou ambos persistem, ou nenhum. Elimina o
+        // dual-write (persistir o pedido e publicar o evento em transações separadas).
+        var pedido = new Pedido(orderId.ToString(), usuarioId, jogoId, jogo.Preco.Valor);
+        await pedidoRepository.AdicionarSemSalvarAsync(pedido, ct);
+
         await eventPublisher.PublishAsync(
             new OrderPlacedEvent
             {
@@ -40,6 +45,8 @@ public sealed class PurchaseService(
             },
             ct);
 
-        return orderId;
+        await pedidoRepository.SalvarAlteracoesAsync(ct);
+
+        return orderId.ToString();
     }
 }

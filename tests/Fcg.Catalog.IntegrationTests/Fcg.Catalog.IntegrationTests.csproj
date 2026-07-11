@@ -14,8 +14,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="FluentAssertions" Version="8.9.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
-    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Testcontainers.MongoDb" Version="4.13.0" />
+    <PackageReference Include="Testcontainers.RabbitMq" Version="4.13.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -24,13 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Fcg.Catalog.Domain\Fcg.Catalog.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Fcg.Catalog.Application\Fcg.Catalog.Application.csproj" />
-    <ProjectReference Include="..\..\src\Fcg.Catalog.Infrastructure\Fcg.Catalog.Infrastructure.csproj" />
+    <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
+    <ProjectReference Include="..\..\src\Fcg.Catalog.Api\Fcg.Catalog.Api.csproj" />
   </ItemGroup>
 
 </Project>

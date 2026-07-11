@@ -98,14 +98,14 @@ public sealed class JogosController(
     /// <response code="422">Dados de validação inválidos.</response>
     [HttpPost("InserirLote")]
     [Authorize(Policy = "ApenasAdmin")]
-    [ProducesResponseType(typeof(JogoResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(IReadOnlyList<JogoResponseDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> InserirLote([FromBody] List<CriarJogoRequestDto> listaDto, CancellationToken ct)
     {
         await criarListValidator.ValidarAsync(listaDto, ct);
-        await jogoService.InserirLoteAsync(listaDto, ct);
-        return StatusCode(201);
+        var criados = await jogoService.InserirLoteAsync(listaDto, ct);
+        return StatusCode(StatusCodes.Status201Created, criados);
     }
 
     /// <summary>

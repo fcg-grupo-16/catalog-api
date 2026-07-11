@@ -28,7 +28,7 @@ public class PurchaseServiceTests
         new("Jogo Teste", "Descrição", GeneroJogo.RPG, new Preco(59.90m), DateTime.Now);
 
     [Fact]
-    public async Task IniciarCompraAsync_DevePublicarOrderPlacedEvent_QuandoDadosValidos()
+    public async Task IniciarCompraAsync_DevePersistirPedidoEPublicarEvento_QuandoDadosValidos()
     {
         var jogo = CriarJogoAtivo();
         _jogoMock.Setup(r => r.ObterPorIdAsync("jogo-id", It.IsAny<CancellationToken>()))
@@ -36,16 +36,26 @@ public class PurchaseServiceTests
         _bibliotecaMock.Setup(r => r.UsuarioPossuiJogoAsync("usuario-id", "jogo-id", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        await _service.IniciarCompraAsync("usuario-id", "jogo-id");
+        var orderId = await _service.IniciarCompraAsync("usuario-id", "jogo-id");
+
+        Guid.TryParse(orderId, out _).Should().BeTrue();
+
+        // Padrão outbox: adiciona o pedido SEM salvar, publica o evento e então salva uma vez.
+        _pedidoMock.Verify(r => r.AdicionarSemSalvarAsync(
+            It.Is<Pedido>(p => p.OrderId == orderId && p.UserId == "usuario-id" && p.GameId == "jogo-id"),
+            It.IsAny<CancellationToken>()), Times.Once);
 
         _publisherMock.Verify(p => p.PublishAsync(
             It.Is<OrderPlacedEvent>(e =>
                 e.UserId == "usuario-id" &&
                 e.GameId == "jogo-id" &&
                 e.Price == 59.90m &&
-                e.OrderId != String.Empty),
+                e.OrderId != Guid.Empty &&
+                e.OrderId.ToString() == orderId),
             It.IsAny<CancellationToken>()),
             Times.Once);
+
+        _pedidoMock.Verify(r => r.SalvarAlteracoesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

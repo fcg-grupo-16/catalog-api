@@ -22,7 +22,7 @@ public record UserCreatedEvent
 /// </summary>
 public record OrderPlacedEvent
 {
-    public string OrderId { get; init; }
+    public Guid OrderId { get; init; }
     public string UserId { get; init; } = string.Empty;
     public string GameId { get; init; } = string.Empty;
     public decimal Price { get; init; }

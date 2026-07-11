@@ -27,6 +27,12 @@ public static class ServiceCollectionExtensions
         services.Configure<MongoDbSettings>(configuration.GetSection(MongoDbSettings.SectionName));
 
         var mongoClient = new MongoClient(mongoSettings.ConnectionString);
+        var mongoDatabase = mongoClient.GetDatabase(mongoSettings.DatabaseName);
+
+        // IMongoClient/IMongoDatabase são exigidos pelo outbox transacional do MassTransit
+        // (AddMongoDbOutbox), que compartilha o mesmo MongoClient do AppDbContext.
+        services.AddSingleton<IMongoClient>(mongoClient);
+        services.AddSingleton(mongoDatabase);
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseMongoDB(mongoClient, mongoSettings.DatabaseName));
@@ -83,6 +89,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJogoService, JogoService>();
         services.AddScoped<IBibliotecaService, BibliotecaService>();
         services.AddScoped<IPurchaseService, PurchaseService>();
+        services.AddScoped<IPedidoService, PedidoService>();
 
         return services;
     }
@@ -95,12 +102,40 @@ public static class ServiceCollectionExtensions
             // consomem o mesmo evento (pub/sub fanout, não competing consumers).
             x.SetEndpointNameFormatter(new KebabCaseEndpointNameFormatter("catalog", false));
             x.AddConsumer<PaymentProcessedConsumer>();
+
+            // Outbox transacional (mesmo padrão da users-api): mensagens publicadas são
+            // gravadas no Mongo na MESMA transação da entidade e entregues ao broker por um
+            // serviço de entrega. Exige MongoDB replica set (transações multi-documento).
+            x.AddMongoDbOutbox(o =>
+            {
+                o.QueryDelay = TimeSpan.FromSeconds(5);
+                o.ClientFactory(provider => provider.GetRequiredService<IMongoClient>());
+                o.DatabaseFactory(provider => provider.GetRequiredService<IMongoDatabase>());
+                o.DuplicateDetectionWindow = TimeSpan.FromSeconds(30);
+                o.UseBusOutbox();
+            });
+
             x.UsingRabbitMq((ctx, cfg) =>
             {
                 var host = configuration["RabbitMq:Host"] ?? "localhost";
                 var user = configuration["RabbitMq:Username"] ?? "guest";
                 var pass = configuration["RabbitMq:Password"] ?? "guest";
-                cfg.Host(host, "/", h => { h.Username(user); h.Password(pass); });
+
+                // Porta opcional (RabbitMq:Port) — permite porta dinâmica em testes de integração;
+                // sem ela, usa a porta padrão do AMQP (5672).
+                if (ushort.TryParse(configuration["RabbitMq:Port"], out var port))
+                {
+                    cfg.Host(host, port, "/", h => { h.Username(user); h.Password(pass); });
+                }
+                else
+                {
+                    cfg.Host(host, "/", h => { h.Username(user); h.Password(pass); });
+                }
+
+                // Política de retry: até 5 tentativas em memória (5s de intervalo). Esgotadas
+                // as tentativas, o MassTransit move a mensagem para a fila _error (dead-letter).
+                cfg.UseMessageRetry(r => r.Interval(5, TimeSpan.FromSeconds(5)));
+
                 cfg.ConfigureEndpoints(ctx);
             });
         });

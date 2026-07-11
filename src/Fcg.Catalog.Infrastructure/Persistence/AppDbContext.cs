@@ -11,7 +11,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Jogo> Jogos => Set<Jogo>();
     public DbSet<BibliotecaJogo> BibliotecaJogos => Set<BibliotecaJogo>();
 
-    public DbSet<Pedido> Pedidos => Set<Pedido>();
+    // Pedido NÃO é mapeado via EF: é persistido pelo driver nativo dentro da transação do
+    // MongoDbContext do MassTransit (outbox transacional) — ver PedidoRepository.
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
