@@ -145,10 +145,7 @@ public static class ServiceCollectionExtensions
                 // falhas prolongadas de dependência (ex.: Mongo indisponível) sem estourar para a _error
                 // cedo. Configurável via RabbitMq:DelayedRedeliverySeconds (usado curto nos testes).
                 // Exceções de domínio são determinísticas: Ignore para não redeliver.
-                var delayedIntervals = (configuration["RabbitMq:DelayedRedeliverySeconds"] ?? "60,300,900")
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Select(s => TimeSpan.FromSeconds(double.Parse(s, CultureInfo.InvariantCulture)))
-                    .ToArray();
+                var delayedIntervals = ParseDelayedIntervals(configuration["RabbitMq:DelayedRedeliverySeconds"]);
                 cfg.UseDelayedRedelivery(r =>
                 {
                     r.Intervals(delayedIntervals);
@@ -170,6 +167,28 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
+    }
+
+    // Parse tolerante de RabbitMq:DelayedRedeliverySeconds. Ignora entradas inválidas/não-positivas
+    // e faz fallback para os defaults (60/300/900s) se a config estiver ausente/vazia/toda inválida —
+    // um valor ruim na config não pode derrubar o serviço no startup.
+    private static TimeSpan[] ParseDelayedIntervals(string? raw)
+    {
+        var defaults = new[] { TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(900) };
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return defaults;
+        }
+
+        var parsed = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) && v > 0
+                ? TimeSpan.FromSeconds(v)
+                : (TimeSpan?)null)
+            .Where(t => t.HasValue)
+            .Select(t => t!.Value)
+            .ToArray();
+
+        return parsed.Length > 0 ? parsed : defaults;
     }
 
     public static void AddSwaggerExtension(this IServiceCollection service)

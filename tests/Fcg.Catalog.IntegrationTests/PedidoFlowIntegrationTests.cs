@@ -203,9 +203,13 @@ public class PedidoFlowIntegrationTests(FcgWebAppFactory factory) : IClassFixtur
         await bus.Publish(evt, c => c.MessageId = msgId);
 
         await AguardarStatusAsync(user, orderId, "Approved", TimeSpan.FromSeconds(30));
+        // O status vira Approved antes da gravação na biblioteca — aguarda o side-effect aparecer
+        // (evita flakiness) antes de contar.
+        (await AguardarBibliotecaContemAsync(user, gameId, TimeSpan.FromSeconds(10)))
+            .Should().BeTrue("o pagamento aprovado grava o jogo na biblioteca");
 
         // Efeito exatamente-uma-vez: o jogo aparece na biblioteca uma única vez.
-        var resp = await user.GetAsync("/api/v1/biblioteca");
+        using var resp = await user.GetAsync("/api/v1/biblioteca");
         var itens = await resp.Content.ReadFromJsonAsync<List<BibliotecaItemDto>>() ?? [];
         itens.Count(i => i.Id == gameId).Should().Be(1, "entrega duplicada não pode gravar o jogo duas vezes");
     }
@@ -239,7 +243,7 @@ public class PedidoFlowIntegrationTests(FcgWebAppFactory factory) : IClassFixtur
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (sw.Elapsed < timeout)
         {
-            var resp = await http.GetAsync($"/api/queues/%2F/{fila}");
+            using var resp = await http.GetAsync($"/api/queues/%2F/{fila}");
             if (resp.StatusCode == HttpStatusCode.OK)
             {
                 var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
@@ -272,7 +276,7 @@ public class PedidoFlowIntegrationTests(FcgWebAppFactory factory) : IClassFixtur
         string? ultimo = null;
         while (sw.Elapsed < timeout)
         {
-            var resp = await user.GetAsync($"/api/v1/pedidos/{orderId}");
+            using var resp = await user.GetAsync($"/api/v1/pedidos/{orderId}");
             if (resp.StatusCode == HttpStatusCode.OK)
             {
                 var pedido = await resp.Content.ReadFromJsonAsync<PedidoDto>();
