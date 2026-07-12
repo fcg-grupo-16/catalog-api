@@ -164,7 +164,7 @@ docker exec fcg-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_
 # RabbitMQ — precisa do plugin rabbitmq_delayed_message_exchange (delayed redelivery do
 # MassTransit). A imagem masstransit/rabbitmq já traz o plugin; a oficial rabbitmq:3-management
 # NÃO traz. (No compose/k8s da plataforma, o repo `orchestration` usa uma imagem custom com o plugin.)
-docker run -d --name fcg-rabbitmq -p 5672:5672 -p 15672:15672 masstransit/rabbitmq
+docker run -d --name fcg-rabbitmq -p 5672:5672 -p 15672:15672 masstransit/rabbitmq:3.13.1
 ```
 
 > A connection string **precisa** do sufixo `?replicaSet=rs0` (ver seção 5). Sem o replica

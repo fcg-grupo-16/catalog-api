@@ -29,7 +29,8 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
     // com o compose local ou execuções paralelas). A porta é injetada em RabbitMq:Port.
     // Imagem masstransit/rabbitmq: base oficial + plugin rabbitmq_delayed_message_exchange, exigido
     // pelo UseDelayedMessageScheduler/UseDelayedRedelivery (a imagem oficial não traz o plugin).
-    private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("masstransit/rabbitmq:latest")
+    // Tag PINADA (linha 3.13, como o orchestration) — evita flakiness por drift do :latest.
+    private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("masstransit/rabbitmq:3.13.1")
         .WithUsername(RabbitUsername)
         .WithPassword(RabbitPassword)
         .Build();
