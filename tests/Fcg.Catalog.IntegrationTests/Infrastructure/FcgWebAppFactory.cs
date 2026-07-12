@@ -27,7 +27,9 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
 
     // Sem bind fixo de porta: usa o mapeamento dinâmico do Testcontainers (evita conflito na 5672
     // com o compose local ou execuções paralelas). A porta é injetada em RabbitMq:Port.
-    private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("rabbitmq:3-management")
+    // Imagem masstransit/rabbitmq: base oficial + plugin rabbitmq_delayed_message_exchange, exigido
+    // pelo UseDelayedMessageScheduler/UseDelayedRedelivery (a imagem oficial não traz o plugin).
+    private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("masstransit/rabbitmq:latest")
         .WithUsername(RabbitUsername)
         .WithPassword(RabbitPassword)
         .Build();

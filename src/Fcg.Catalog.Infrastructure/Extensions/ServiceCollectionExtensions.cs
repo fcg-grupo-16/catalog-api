@@ -1,6 +1,7 @@
 using System.Text;
 using Fcg.Catalog.Application.Interfaces;
 using Fcg.Catalog.Application.Services;
+using Fcg.Catalog.Domain.Exceptions;
 using Fcg.Catalog.Domain.Repositories;
 using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
@@ -133,9 +134,29 @@ public static class ServiceCollectionExtensions
                     cfg.Host(host, "/", h => { h.Username(user); h.Password(pass); });
                 }
 
-                // Política de retry: até 5 tentativas em memória (5s de intervalo). Esgotadas
-                // as tentativas, o MassTransit move a mensagem para a fila _error (dead-letter).
-                cfg.UseMessageRetry(r => r.Interval(5, TimeSpan.FromSeconds(5)));
+                // Scheduler de mensagens atrasadas — usa o plugin rabbitmq_delayed_message_exchange
+                // do broker (habilitado na imagem custom do repo orchestration). Necessário para o
+                // delayed redelivery abaixo.
+                cfg.UseDelayedMessageScheduler();
+
+                // Redelivery atrasado (second-level retry): esgotado o retry imediato, a mensagem é
+                // devolvida ao broker com intervalos CRESCENTES (1min → 5min → 15min) — absorve falhas
+                // prolongadas de dependência (ex.: Mongo indisponível) sem estourar para a _error cedo.
+                // Exceções de domínio são determinísticas: Ignore para não redeliver.
+                cfg.UseDelayedRedelivery(r =>
+                {
+                    r.Intervals(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15));
+                    r.Ignore<DomainException>();
+                });
+
+                // Retry imediato (first-level), EXPONENCIAL com limite. Erros de negócio/validação
+                // (DomainException e subtipos) são determinísticos — Ignore os manda direto para a
+                // _error sem retentar; faltas transitórias de infra (não-DomainException) são retentadas.
+                cfg.UseMessageRetry(r =>
+                {
+                    r.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(3));
+                    r.Ignore<DomainException>();
+                });
 
                 cfg.ConfigureEndpoints(ctx);
             });
