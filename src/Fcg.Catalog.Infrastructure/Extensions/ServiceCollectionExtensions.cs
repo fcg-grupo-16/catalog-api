@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Fcg.Catalog.Application.Interfaces;
 using Fcg.Catalog.Application.Services;
@@ -140,21 +141,24 @@ public static class ServiceCollectionExtensions
                 cfg.UseDelayedMessageScheduler();
 
                 // Redelivery atrasado (second-level retry): esgotado o retry imediato, a mensagem é
-                // devolvida ao broker com intervalos CRESCENTES (1min → 5min → 15min) — absorve falhas
-                // prolongadas de dependência (ex.: Mongo indisponível) sem estourar para a _error cedo.
+                // devolvida ao broker com intervalos CRESCENTES (default 1min → 5min → 15min) — absorve
+                // falhas prolongadas de dependência (ex.: Mongo indisponível) sem estourar para a _error
+                // cedo. Configurável via RabbitMq:DelayedRedeliverySeconds (usado curto nos testes).
                 // Exceções de domínio são determinísticas: Ignore para não redeliver.
+                var delayedIntervals = ParseDelayedIntervals(configuration["RabbitMq:DelayedRedeliverySeconds"]);
                 cfg.UseDelayedRedelivery(r =>
                 {
-                    r.Intervals(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15));
+                    r.Intervals(delayedIntervals);
                     r.Ignore<DomainException>();
                 });
 
                 // Retry imediato (first-level), EXPONENCIAL com limite. Erros de negócio/validação
                 // (DomainException e subtipos) são determinísticos — Ignore os manda direto para a
                 // _error sem retentar; faltas transitórias de infra (não-DomainException) são retentadas.
+                var immediateRetries = int.TryParse(configuration["RabbitMq:ImmediateRetryCount"], out var ir) ? ir : 3;
                 cfg.UseMessageRetry(r =>
                 {
-                    r.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(3));
+                    r.Exponential(immediateRetries, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(3));
                     r.Ignore<DomainException>();
                 });
 
@@ -163,6 +167,28 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
+    }
+
+    // Parse tolerante de RabbitMq:DelayedRedeliverySeconds. Ignora entradas inválidas/não-positivas
+    // e faz fallback para os defaults (60/300/900s) se a config estiver ausente/vazia/toda inválida —
+    // um valor ruim na config não pode derrubar o serviço no startup.
+    private static TimeSpan[] ParseDelayedIntervals(string? raw)
+    {
+        var defaults = new[] { TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(900) };
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return defaults;
+        }
+
+        var parsed = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) && v > 0
+                ? TimeSpan.FromSeconds(v)
+                : (TimeSpan?)null)
+            .Where(t => t.HasValue)
+            .Select(t => t!.Value)
+            .ToArray();
+
+        return parsed.Length > 0 ? parsed : defaults;
     }
 
     public static void AddSwaggerExtension(this IServiceCollection service)

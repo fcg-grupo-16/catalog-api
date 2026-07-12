@@ -33,7 +33,13 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
     private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("masstransit/rabbitmq:3.13.1")
         .WithUsername(RabbitUsername)
         .WithPassword(RabbitPassword)
+        .WithPortBinding(15672, assignRandomHostPort: true) // Management HTTP (checar a fila _error nos testes)
         .Build();
+
+    /// <summary>Porta HTTP do Management do RabbitMQ (para inspecionar filas, ex.: a _error).</summary>
+    public int RabbitManagementPort => _rabbit.GetMappedPublicPort(15672);
+    public const string RabbitMgmtUser = RabbitUsername;
+    public const string RabbitMgmtPass = RabbitPassword;
 
     public async Task InitializeAsync()
     {
@@ -52,6 +58,10 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
         builder.UseSetting("RabbitMq:Port", _rabbit.GetMappedPublicPort(5672).ToString());
         builder.UseSetting("RabbitMq:Username", RabbitUsername);
         builder.UseSetting("RabbitMq:Password", RabbitPassword);
+        // Retry/redelivery CURTOS nos testes: um poison message chega à _error em segundos
+        // (em produção os defaults são 3 imediatos + 60/300/900s de redelivery atrasado).
+        builder.UseSetting("RabbitMq:ImmediateRetryCount", "1");
+        builder.UseSetting("RabbitMq:DelayedRedeliverySeconds", "1,1");
         builder.UseSetting("JwtSettings:SecretKey", JwtSecret);
         builder.UseSetting("JwtSettings:Issuer", JwtIssuer);
         builder.UseSetting("JwtSettings:Audience", JwtAudience);
