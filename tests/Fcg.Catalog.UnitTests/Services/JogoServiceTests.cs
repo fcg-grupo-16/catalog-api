@@ -119,6 +119,47 @@ public class JogoServiceTests
     }
 
     [Fact]
+    public async Task ListarAsync_DevePreencherTotalComAContagemDoBanco_SemFiltro()
+    {
+        // Página com 2 itens, mas o total no banco é 57 — o Total NÃO pode ser o tamanho da página.
+        var pagina = new List<Jogo>
+        {
+            new("Jogo 1", "Desc 1", GeneroJogo.Acao, new Preco(10), DateTime.Now),
+            new("Jogo 2", "Desc 2", GeneroJogo.RPG, new Preco(20), DateTime.Now)
+        };
+        _repositoryMock.Setup(r => r.ObterTodosAsync(1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagina);
+        _repositoryMock.Setup(r => r.ContagemTotalJogos(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(57);
+
+        var result = await _service.ListarAsync(1, 10, null);
+
+        result.Total.Should().Be(57);
+        result.Itens.Should().HaveCount(2);
+        _repositoryMock.Verify(r => r.ContagemTotalJogos(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ListarAsync_DevePreencherTotalComAContagemDoGenero_ComFiltro()
+    {
+        var pagina = new List<Jogo>
+        {
+            new("RPG Game", "Desc", GeneroJogo.RPG, new Preco(30), DateTime.Now)
+        };
+        _repositoryMock.Setup(r => r.BuscarPorGeneroAsync(GeneroJogo.RPG, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagina);
+        _repositoryMock.Setup(r => r.ContagemTotalJogosGenero(GeneroJogo.RPG, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(12);
+
+        var result = await _service.ListarAsync(1, 10, GeneroJogo.RPG);
+
+        result.Total.Should().Be(12);
+        // Sem filtro NÃO deve ser consultado: o total é o do gênero.
+        _repositoryMock.Verify(r => r.ContagemTotalJogosGenero(GeneroJogo.RPG, It.IsAny<CancellationToken>()), Times.Once);
+        _repositoryMock.Verify(r => r.ContagemTotalJogos(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task AtualizarAsync_DeveRetornarJogoAtualizado_QuandoDadosValidos()
     {
         var jogo = new Jogo("Título", "Desc", GeneroJogo.Acao, new Preco(10), DateTime.Now);

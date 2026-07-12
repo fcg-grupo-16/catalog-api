@@ -106,6 +106,84 @@ public class PedidoFlowIntegrationTests(FcgWebAppFactory factory) : IClassFixtur
         await AguardarStatusAsync(user, orderId, "Rejected", TimeSpan.FromSeconds(30));
     }
 
+    [Fact]
+    public async Task PostJogo_SemToken_DeveRetornar401()
+    {
+        var anonimo = factory.CreateClient(); // sem Authorization header
+        var resp = await anonimo.PostAsJsonAsync("/api/v1/jogos", new
+        {
+            titulo = "Sem token", descricao = "x", genero = 2, preco = 10m,
+            dataLancamento = "2024-01-01T00:00:00Z"
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task PostJogo_ComUsuarioNaoAdmin_DeveRetornar403()
+    {
+        var user = UserClient("usuario-comum"); // token válido, mas sem role Administrador
+        var resp = await user.PostAsJsonAsync("/api/v1/jogos", new
+        {
+            titulo = "Nao admin", descricao = "x", genero = 2, preco = 10m,
+            dataLancamento = "2024-01-01T00:00:00Z"
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task PagamentoAprovado_DeveGravarJogoNaBiblioteca()
+    {
+        var gameId = await CriarJogoAsync();
+        var user = UserClient("user-biblioteca-ok");
+        var orderId = Guid.Parse(await ComprarAsync(user, gameId));
+
+        await PublicarPagamentoAsync(orderId, "user-biblioteca-ok", gameId, "Approved");
+        await AguardarStatusAsync(user, orderId, "Approved", TimeSpan.FromSeconds(30));
+
+        // Side-effect: o jogo aprovado deve aparecer na biblioteca do usuário.
+        (await AguardarBibliotecaContemAsync(user, gameId, TimeSpan.FromSeconds(10)))
+            .Should().BeTrue("um pagamento aprovado grava o jogo na biblioteca");
+    }
+
+    [Fact]
+    public async Task PagamentoRejeitado_NaoDeveGravarNaBiblioteca()
+    {
+        var gameId = await CriarJogoAsync();
+        var user = UserClient("user-biblioteca-rejeitado");
+        var orderId = Guid.Parse(await ComprarAsync(user, gameId));
+
+        await PublicarPagamentoAsync(orderId, "user-biblioteca-rejeitado", gameId, "Rejected");
+        await AguardarStatusAsync(user, orderId, "Rejected", TimeSpan.FromSeconds(30));
+
+        // Side-effect negativo: pagamento rejeitado NÃO grava na biblioteca.
+        (await BibliotecaContemAsync(user, gameId))
+            .Should().BeFalse("um pagamento rejeitado não deve gravar o jogo na biblioteca");
+    }
+
+    private static async Task<bool> BibliotecaContemAsync(HttpClient user, string gameId)
+    {
+        var resp = await user.GetAsync("/api/v1/biblioteca");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var itens = await resp.Content.ReadFromJsonAsync<List<BibliotecaItemDto>>() ?? [];
+        return itens.Any(i => i.Id == gameId);
+    }
+
+    private static async Task<bool> AguardarBibliotecaContemAsync(HttpClient user, string gameId, TimeSpan timeout)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (sw.Elapsed < timeout)
+        {
+            if (await BibliotecaContemAsync(user, gameId))
+            {
+                return true;
+            }
+            await Task.Delay(500);
+        }
+        return false;
+    }
+
     private async Task PublicarPagamentoAsync(Guid orderId, string userId, string gameId, string status)
     {
         var bus = factory.Services.GetRequiredService<IBus>();
@@ -146,4 +224,5 @@ public class PedidoFlowIntegrationTests(FcgWebAppFactory factory) : IClassFixtur
     private sealed record JogoDto(string Id);
     private sealed record CompraDto(string OrderId);
     private sealed record PedidoDto(string OrderId, string UserId, string GameId, decimal Preco, string Status);
+    private sealed record BibliotecaItemDto(string Id);
 }
