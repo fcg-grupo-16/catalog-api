@@ -161,12 +161,19 @@ docker run -d --name fcg-mongo -p 27017:27017 mongo:7 --replSet rs0
 # inicia o replica set (uma vez, após o container subir):
 docker exec fcg-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
 
-# RabbitMQ (com painel de gestão em http://localhost:15672, login guest/guest)
-docker run -d --name fcg-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+# RabbitMQ — precisa do plugin rabbitmq_delayed_message_exchange (delayed redelivery do
+# MassTransit). A imagem masstransit/rabbitmq já traz o plugin; a oficial rabbitmq:3-management
+# NÃO traz. (No compose/k8s da plataforma, o repo `orchestration` usa uma imagem custom com o plugin.)
+docker run -d --name fcg-rabbitmq -p 5672:5672 -p 15672:15672 masstransit/rabbitmq:3.13.1
 ```
 
 > A connection string **precisa** do sufixo `?replicaSet=rs0` (ver seção 5). Sem o replica
 > set, a persistência do pedido + publicação do `OrderPlacedEvent` (outbox transacional) falha.
+>
+> **Resiliência da mensageria:** o consumer usa retry imediato **exponencial** (3 tentativas)
+> e, esgotado, **delayed redelivery** com intervalos crescentes (1min → 5min → 15min) antes de
+> ir para a fila `_error`. Exceções de domínio (`DomainException`) são determinísticas e vão
+> direto para a `_error` (sem retentar). O redelivery atrasado exige o plugin acima.
 
 ---
 
