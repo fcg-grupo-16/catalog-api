@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Fcg.Catalog.Application.Interfaces;
 using Fcg.Catalog.Application.Services;
@@ -140,21 +141,27 @@ public static class ServiceCollectionExtensions
                 cfg.UseDelayedMessageScheduler();
 
                 // Redelivery atrasado (second-level retry): esgotado o retry imediato, a mensagem é
-                // devolvida ao broker com intervalos CRESCENTES (1min → 5min → 15min) — absorve falhas
-                // prolongadas de dependência (ex.: Mongo indisponível) sem estourar para a _error cedo.
+                // devolvida ao broker com intervalos CRESCENTES (default 1min → 5min → 15min) — absorve
+                // falhas prolongadas de dependência (ex.: Mongo indisponível) sem estourar para a _error
+                // cedo. Configurável via RabbitMq:DelayedRedeliverySeconds (usado curto nos testes).
                 // Exceções de domínio são determinísticas: Ignore para não redeliver.
+                var delayedIntervals = (configuration["RabbitMq:DelayedRedeliverySeconds"] ?? "60,300,900")
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(s => TimeSpan.FromSeconds(double.Parse(s, CultureInfo.InvariantCulture)))
+                    .ToArray();
                 cfg.UseDelayedRedelivery(r =>
                 {
-                    r.Intervals(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15));
+                    r.Intervals(delayedIntervals);
                     r.Ignore<DomainException>();
                 });
 
                 // Retry imediato (first-level), EXPONENCIAL com limite. Erros de negócio/validação
                 // (DomainException e subtipos) são determinísticos — Ignore os manda direto para a
                 // _error sem retentar; faltas transitórias de infra (não-DomainException) são retentadas.
+                var immediateRetries = int.TryParse(configuration["RabbitMq:ImmediateRetryCount"], out var ir) ? ir : 3;
                 cfg.UseMessageRetry(r =>
                 {
-                    r.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(3));
+                    r.Exponential(immediateRetries, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(3));
                     r.Ignore<DomainException>();
                 });
 

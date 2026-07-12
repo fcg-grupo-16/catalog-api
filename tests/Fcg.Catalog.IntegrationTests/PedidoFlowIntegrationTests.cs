@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Fcg.Catalog.IntegrationTests.Infrastructure;
 using Fcg.Contracts.Events;
 using FluentAssertions;
@@ -182,6 +183,74 @@ public class PedidoFlowIntegrationTests(FcgWebAppFactory factory) : IClassFixtur
             await Task.Delay(500);
         }
         return false;
+    }
+
+    [Fact]
+    public async Task PagamentoDuplicado_DeveAplicarEfeitoUmaVez()
+    {
+        var gameId = await CriarJogoAsync();
+        var user = UserClient("user-dedup");
+        var orderId = Guid.Parse(await ComprarAsync(user, gameId));
+
+        var bus = factory.Services.GetRequiredService<IBus>();
+        var msgId = NewId.NextGuid();
+        var evt = new PaymentProcessedEvent
+        {
+            OrderId = orderId, UserId = "user-dedup", GameId = gameId, Price = 49.90m, Status = "Approved"
+        };
+        // Mesmo MessageId entregue 2x: o inbox (UseMongoDbOutbox) deduplica a 2ª entrega.
+        await bus.Publish(evt, c => c.MessageId = msgId);
+        await bus.Publish(evt, c => c.MessageId = msgId);
+
+        await AguardarStatusAsync(user, orderId, "Approved", TimeSpan.FromSeconds(30));
+
+        // Efeito exatamente-uma-vez: o jogo aparece na biblioteca uma única vez.
+        var resp = await user.GetAsync("/api/v1/biblioteca");
+        var itens = await resp.Content.ReadFromJsonAsync<List<BibliotecaItemDto>>() ?? [];
+        itens.Count(i => i.Id == gameId).Should().Be(1, "entrega duplicada não pode gravar o jogo duas vezes");
+    }
+
+    [Fact]
+    public async Task PagamentoParaPedidoInexistente_DeveIrParaDeadLetter()
+    {
+        // OrderId que não corresponde a nenhum pedido → o consumer lança (não-DomainException),
+        // esgota o retry imediato + delayed redelivery (curtos nos testes) e a mensagem vai para a _error.
+        var bus = factory.Services.GetRequiredService<IBus>();
+        await bus.Publish(new PaymentProcessedEvent
+        {
+            OrderId = Guid.NewGuid(), UserId = "fantasma", GameId = Guid.NewGuid().ToString(),
+            Price = 10m, Status = "Approved"
+        });
+
+        var mensagens = await ContarMensagensNaFilaAsync("catalog-payment-processed_error", TimeSpan.FromSeconds(40));
+
+        mensagens.Should().BeGreaterThan(0,
+            "após esgotar retry imediato + delayed redelivery, o poison message deve ir para a fila _error (dead-letter)");
+    }
+
+    // Consulta o Management HTTP do RabbitMQ até a fila ter mensagens (ou expirar o timeout).
+    private async Task<int> ContarMensagensNaFilaAsync(string fila, TimeSpan timeout)
+    {
+        using var http = new HttpClient { BaseAddress = new Uri($"http://localhost:{factory.RabbitManagementPort}") };
+        var auth = Convert.ToBase64String(
+            System.Text.Encoding.UTF8.GetBytes($"{FcgWebAppFactory.RabbitMgmtUser}:{FcgWebAppFactory.RabbitMgmtPass}"));
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", auth);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (sw.Elapsed < timeout)
+        {
+            var resp = await http.GetAsync($"/api/queues/%2F/{fila}");
+            if (resp.StatusCode == HttpStatusCode.OK)
+            {
+                var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+                if (json.TryGetProperty("messages", out var m) && m.GetInt32() > 0)
+                {
+                    return m.GetInt32();
+                }
+            }
+            await Task.Delay(500);
+        }
+        return 0;
     }
 
     private async Task PublicarPagamentoAsync(Guid orderId, string userId, string gameId, string status)
