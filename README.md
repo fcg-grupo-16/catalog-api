@@ -155,12 +155,18 @@ O MassTransit usa um prefixo de fila por serviço (`KebabCaseEndpointNameFormatt
 Subindo as dependências localmente via Docker:
 
 ```bash
-# MongoDB
-docker run -d --name fcg-mongo -p 27017:27017 mongo:7
+# MongoDB — DEVE rodar como replica set (rs0): o outbox transacional usa transações
+# multi-documento, que exigem replica set (Mongo standalone quebra a compra).
+docker run -d --name fcg-mongo -p 27017:27017 mongo:7 --replSet rs0
+# inicia o replica set (uma vez, após o container subir):
+docker exec fcg-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
 
 # RabbitMQ (com painel de gestão em http://localhost:15672, login guest/guest)
 docker run -d --name fcg-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 ```
+
+> A connection string **precisa** do sufixo `?replicaSet=rs0` (ver seção 5). Sem o replica
+> set, a persistência do pedido + publicação do `OrderPlacedEvent` (outbox transacional) falha.
 
 ---
 
@@ -171,7 +177,7 @@ Todas as chaves do `appsettings.json` podem ser sobrescritas por variável de am
 | Variável (`Secao__Chave`) | Descrição | Default |
 | --- | --- | --- |
 | `ASPNETCORE_ENVIRONMENT` | Ambiente de execução. Swagger só é exposto em `Development`. | `Production` (definido nos manifestos k8s) |
-| `MongoDbSettings__ConnectionString` | String de conexão do MongoDB. | `mongodb://localhost:27017` |
+| `MongoDbSettings__ConnectionString` | String de conexão do MongoDB. **Deve incluir `?replicaSet=rs0`** (o outbox transacional exige replica set). | `mongodb://localhost:27017/?replicaSet=rs0` |
 | `MongoDbSettings__DatabaseName` | Nome do banco de dados. | `catalogdb` |
 | `JwtSettings__SecretKey` | Chave HMAC (≥256 bits) usada para **validar** o token. **Deve ser idêntica à da `users-api`.** | `OVERRIDE_VIA_ENV_VAR_EM_PRODUCAO` (substituir!) |
 | `JwtSettings__Issuer` | Issuer válido do token. | `FiapCloudGames` |

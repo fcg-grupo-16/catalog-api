@@ -30,9 +30,9 @@ try
     var rabbitUri = $"amqp://{builder.Configuration["RabbitMq:Username"]}:{builder.Configuration["RabbitMq:Password"]}@{builder.Configuration["RabbitMq:Host"]}:5672/";
 
     builder.Services.AddHealthChecks()
-        .AddMongoDb(sp=> new MongoClient(mongoCs))
-         .AddRabbitMQ(sp => new ConnectionFactory { Uri = new Uri(rabbitUri) }.CreateConnectionAsync(),
-                 name: "rabbitmq", tags: ["ready"]);
+        .AddMongoDb(sp => new MongoClient(mongoCs), name: "mongodb", tags: ["ready"])
+        .AddRabbitMQ(sp => new ConnectionFactory { Uri = new Uri(rabbitUri) }.CreateConnectionAsync(),
+                name: "rabbitmq", tags: ["ready"]);
 
     builder.Services.AddSwaggerExtension();
     builder.Services.AddValidatorsFromAssemblyContaining<CriarJogoValidator>();

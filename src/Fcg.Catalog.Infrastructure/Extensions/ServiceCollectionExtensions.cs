@@ -101,7 +101,8 @@ public static class ServiceCollectionExtensions
             // Prefixo por serviço garante filas distintas entre microsserviços que
             // consomem o mesmo evento (pub/sub fanout, não competing consumers).
             x.SetEndpointNameFormatter(new KebabCaseEndpointNameFormatter("catalog", false));
-            x.AddConsumer<PaymentProcessedConsumer>();
+            // Definition habilita o inbox transacional (dedup) no endpoint do consumer.
+            x.AddConsumer<PaymentProcessedConsumer, PaymentProcessedConsumerDefinition>();
 
             // Outbox transacional (mesmo padrão da users-api): mensagens publicadas são
             // gravadas no Mongo na MESMA transação da entidade e entregues ao broker por um
