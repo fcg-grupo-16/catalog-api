@@ -27,32 +27,31 @@ try
 
 
     // Conexão RabbitMQ ÚNICA e reutilizada pelo health check. Antes o AddRabbitMQ abria uma conexão
-    // nova a cada readiness sem fechá-la (leak que saturava o broker). Aqui a factory cria a conexão
-    // UMA vez (??=) e a reusa em todas as checagens — com auto-recovery para reconectar quando o
-    // broker volta. Lazy e assíncrona (sem sync-over-async, sem bloquear o startup): se o broker
-    // estiver fora/lento no boot, o processo sobe mesmo assim, o check reporta 503, e uma tentativa
-    // futura reconecta (200). Respeita RabbitMq:Port (porta dinâmica nos testes; 5672 em compose/k8s).
-    IConnection? healthRabbitConnection = null;
+    // nova a cada readiness sem fechá-la (leak que saturava o broker). Lazy<Task<IConnection>>
+    // garante que a factory é chamada no máximo UMA vez mesmo com checagens concorrentes
+    // (thread-safe por padrão: LazyThreadSafetyMode.ExecutionAndPublication) e a mesma Task é
+    // compartilhada por todos os waiters. O processo sobe mesmo com o broker fora/lento; o check
+    // reporta 503 até a conexão ser estabelecida, e se reconecta sozinha (AutomaticRecoveryEnabled).
+    // Respeita RabbitMq:Port (porta dinâmica nos testes; 5672 em compose/k8s).
+    var lazyRabbitConnection = new Lazy<Task<IConnection>>(() =>
+    {
+        var rabbitPort = ushort.TryParse(builder.Configuration["RabbitMq:Port"], out var parsedPort) ? parsedPort : (ushort)5672;
+        return new ConnectionFactory
+        {
+            HostName = builder.Configuration["RabbitMq:Host"] ?? "localhost",
+            UserName = builder.Configuration["RabbitMq:Username"] ?? "guest",
+            Password = builder.Configuration["RabbitMq:Password"] ?? "guest",
+            Port = rabbitPort,
+            AutomaticRecoveryEnabled = true
+        }.CreateConnectionAsync();
+    });
 
     builder.Services.AddHealthChecks()
         // Reaproveita o IMongoClient singleton do DI (resolvido em runtime) — evita abrir
         // um segundo client/pool de conexões só para o health check.
         .AddMongoDb(sp => sp.GetRequiredService<IMongoClient>(), name: "mongodb", tags: ["ready"])
         .AddRabbitMQ(
-            factory: async sp =>
-            {
-                var configuration = sp.GetRequiredService<IConfiguration>();
-                var rabbitPort = ushort.TryParse(configuration["RabbitMq:Port"], out var parsedPort) ? parsedPort : (ushort)5672;
-                healthRabbitConnection ??= await new ConnectionFactory
-                {
-                    HostName = configuration["RabbitMq:Host"] ?? "localhost",
-                    UserName = configuration["RabbitMq:Username"] ?? "guest",
-                    Password = configuration["RabbitMq:Password"] ?? "guest",
-                    Port = rabbitPort,
-                    AutomaticRecoveryEnabled = true
-                }.CreateConnectionAsync();
-                return healthRabbitConnection;
-            },
+            factory: _ => lazyRabbitConnection.Value,
             name: "rabbitmq",
             tags: ["ready"]);
 
@@ -91,6 +90,13 @@ try
     app.MapHealthChecks("/health/ready", new HealthCheckOptions
     {
         Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ
+    });
+
+    // Descarta a conexão do health check ao encerrar a aplicação.
+    app.Lifetime.ApplicationStopping.Register(() =>
+    {
+        if (lazyRabbitConnection.IsValueCreated && lazyRabbitConnection.Value.IsCompletedSuccessfully)
+            lazyRabbitConnection.Value.Result.Dispose();
     });
 
     try
