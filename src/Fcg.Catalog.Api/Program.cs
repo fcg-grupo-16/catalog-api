@@ -119,9 +119,6 @@ try
         Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ
     });
 
-    // Descarta a conexão do health check ao encerrar a aplicação.
-    app.Lifetime.ApplicationStopping.Register(() => healthRabbitConnection?.Dispose());
-
     try
     {
         await DatabaseSeed.SeedAsync(app.Services);
@@ -132,6 +129,11 @@ try
     }
 
     await app.RunAsync();
+
+    // Libera recursos da conexão de health check após o host encerrar (sem concorrência possível).
+    if (healthRabbitConnection is not null)
+        await healthRabbitConnection.DisposeAsync();
+    healthRabbitLock.Dispose();
 }
 catch (Exception ex) when (ex is not HostAbortedException)
 {
