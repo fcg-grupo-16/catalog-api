@@ -27,31 +27,58 @@ try
 
 
     // Conexão RabbitMQ ÚNICA e reutilizada pelo health check. Antes o AddRabbitMQ abria uma conexão
-    // nova a cada readiness sem fechá-la (leak que saturava o broker). Lazy<Task<IConnection>>
-    // garante que a factory é chamada no máximo UMA vez mesmo com checagens concorrentes
-    // (thread-safe por padrão: LazyThreadSafetyMode.ExecutionAndPublication) e a mesma Task é
-    // compartilhada por todos os waiters. O processo sobe mesmo com o broker fora/lento; o check
-    // reporta 503 até a conexão ser estabelecida, e se reconecta sozinha (AutomaticRecoveryEnabled).
-    // Respeita RabbitMq:Port (porta dinâmica nos testes; 5672 em compose/k8s).
-    var lazyRabbitConnection = new Lazy<Task<IConnection>>(() =>
-    {
-        var rabbitPort = ushort.TryParse(builder.Configuration["RabbitMq:Port"], out var parsedPort) ? parsedPort : (ushort)5672;
-        return new ConnectionFactory
-        {
-            HostName = builder.Configuration["RabbitMq:Host"] ?? "localhost",
-            UserName = builder.Configuration["RabbitMq:Username"] ?? "guest",
-            Password = builder.Configuration["RabbitMq:Password"] ?? "guest",
-            Port = rabbitPort,
-            AutomaticRecoveryEnabled = true
-        }.CreateConnectionAsync();
-    });
+    // nova a cada readiness sem fechá-la (leak que saturava o broker). A factory cria a conexão UMA
+    // vez e a reusa em todas as checagens — com auto-recovery para reconectar quando o broker volta.
+    // O lock (double-checked) evita a criação concorrente se dois probes chegarem simultaneamente; se
+    // a conexão estiver fechada (recovery esgotado) ela é descartada e RECRIADA na próxima check —
+    // por isso não usamos Lazy<Task<IConnection>>, que cachearia uma Task falhada (broker fora no 1º
+    // check) e deixaria o readiness preso em 503 mesmo após o broker voltar. Lazy e assíncrona (sem
+    // sync-over-async, sem bloquear o startup): o processo sobe mesmo com o broker fora/lento, o check
+    // reporta 503, e uma tentativa futura reconecta (200). Respeita RabbitMq:Port (porta dinâmica nos
+    // testes; 5672 em compose/k8s).
+    var healthRabbitLock = new SemaphoreSlim(1, 1);
+    IConnection? healthRabbitConnection = null;
 
     builder.Services.AddHealthChecks()
         // Reaproveita o IMongoClient singleton do DI (resolvido em runtime) — evita abrir
         // um segundo client/pool de conexões só para o health check.
         .AddMongoDb(sp => sp.GetRequiredService<IMongoClient>(), name: "mongodb", tags: ["ready"])
         .AddRabbitMQ(
-            factory: _ => lazyRabbitConnection.Value,
+            factory: async sp =>
+            {
+                if (healthRabbitConnection?.IsOpen == true)
+                    return healthRabbitConnection;
+
+                var configuration = sp.GetRequiredService<IConfiguration>();
+                var rabbitPort = ushort.TryParse(configuration["RabbitMq:Port"], out var parsedPort) ? parsedPort : (ushort)5672;
+                await healthRabbitLock.WaitAsync();
+                try
+                {
+                    if (healthRabbitConnection?.IsOpen == true)
+                        return healthRabbitConnection;
+
+                    // A conexão anterior está fechada (recovery esgotado) — descarta antes de recriar.
+                    if (healthRabbitConnection is not null)
+                    {
+                        await healthRabbitConnection.DisposeAsync();
+                        healthRabbitConnection = null;
+                    }
+
+                    healthRabbitConnection = await new ConnectionFactory
+                    {
+                        HostName = configuration["RabbitMq:Host"] ?? "localhost",
+                        UserName = configuration["RabbitMq:Username"] ?? "guest",
+                        Password = configuration["RabbitMq:Password"] ?? "guest",
+                        Port = rabbitPort,
+                        AutomaticRecoveryEnabled = true
+                    }.CreateConnectionAsync();
+                    return healthRabbitConnection;
+                }
+                finally
+                {
+                    healthRabbitLock.Release();
+                }
+            },
             name: "rabbitmq",
             tags: ["ready"]);
 
@@ -93,11 +120,7 @@ try
     });
 
     // Descarta a conexão do health check ao encerrar a aplicação.
-    app.Lifetime.ApplicationStopping.Register(() =>
-    {
-        if (lazyRabbitConnection.IsValueCreated && lazyRabbitConnection.Value.IsCompletedSuccessfully)
-            lazyRabbitConnection.Value.Result.Dispose();
-    });
+    app.Lifetime.ApplicationStopping.Register(() => healthRabbitConnection?.Dispose());
 
     try
     {
