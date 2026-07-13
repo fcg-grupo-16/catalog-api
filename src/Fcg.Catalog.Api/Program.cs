@@ -46,25 +46,27 @@ try
         .AddRabbitMQ(
             factory: async sp =>
             {
-                if (healthRabbitConnection?.IsOpen == true)
-                    return healthRabbitConnection;
+                var current = Volatile.Read(ref healthRabbitConnection);
+                if (current?.IsOpen == true)
+                    return current;
 
                 var configuration = sp.GetRequiredService<IConfiguration>();
                 var rabbitPort = ushort.TryParse(configuration["RabbitMq:Port"], out var parsedPort) ? parsedPort : (ushort)5672;
                 await healthRabbitLock.WaitAsync();
                 try
                 {
-                    if (healthRabbitConnection?.IsOpen == true)
-                        return healthRabbitConnection;
+                    current = Volatile.Read(ref healthRabbitConnection);
+                    if (current?.IsOpen == true)
+                        return current;
 
                     // A conexão anterior está fechada (recovery esgotado) — descarta antes de recriar.
-                    if (healthRabbitConnection is not null)
+                    if (current is not null)
                     {
-                        await healthRabbitConnection.DisposeAsync();
-                        healthRabbitConnection = null;
+                        await current.DisposeAsync();
+                        Volatile.Write(ref healthRabbitConnection, null);
                     }
 
-                    healthRabbitConnection = await new ConnectionFactory
+                    var created = await new ConnectionFactory
                     {
                         HostName = configuration["RabbitMq:Host"] ?? "localhost",
                         UserName = configuration["RabbitMq:Username"] ?? "guest",
@@ -72,7 +74,8 @@ try
                         Port = rabbitPort,
                         AutomaticRecoveryEnabled = true
                     }.CreateConnectionAsync();
-                    return healthRabbitConnection;
+                    Volatile.Write(ref healthRabbitConnection, created);
+                    return created;
                 }
                 finally
                 {
