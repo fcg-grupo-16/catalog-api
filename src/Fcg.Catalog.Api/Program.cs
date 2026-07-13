@@ -26,14 +26,28 @@ try
 
 
 
-    var rabbitUri = $"amqp://{builder.Configuration["RabbitMq:Username"]}:{builder.Configuration["RabbitMq:Password"]}@{builder.Configuration["RabbitMq:Host"]}:5672/";
+    // Conexão RabbitMQ ÚNICA (singleton) para o health check reusar — com auto-recovery. Criada no
+    // startup (async, sem sync-over-async); o broker já está up aqui (initContainer/depends_on).
+    // Antes o AddRabbitMQ abria uma conexão nova a cada readiness sem fechá-la (leak que saturava o broker).
+    // Respeita RabbitMq:Port (porta dinâmica nos testes de integração; 5672 em compose/k8s).
+    var rabbitPort = ushort.TryParse(builder.Configuration["RabbitMq:Port"], out var parsedPort) ? parsedPort : (ushort)5672;
+    var rabbitConnection = await new ConnectionFactory
+    {
+        HostName = builder.Configuration["RabbitMq:Host"] ?? "localhost",
+        UserName = builder.Configuration["RabbitMq:Username"] ?? "guest",
+        Password = builder.Configuration["RabbitMq:Password"] ?? "guest",
+        Port = rabbitPort,
+        AutomaticRecoveryEnabled = true
+    }.CreateConnectionAsync();
+    builder.Services.AddSingleton<IConnection>(rabbitConnection);
 
     builder.Services.AddHealthChecks()
         // Reaproveita o IMongoClient singleton do DI (resolvido em runtime) — evita abrir
         // um segundo client/pool de conexões só para o health check.
         .AddMongoDb(sp => sp.GetRequiredService<IMongoClient>(), name: "mongodb", tags: ["ready"])
-        .AddRabbitMQ(sp => new ConnectionFactory { Uri = new Uri(rabbitUri) }.CreateConnectionAsync(),
-                name: "rabbitmq", tags: ["ready"]);
+        // AddRabbitMQ SEM factory: reusa a IConnection singleton do DI (sem leak); detecta o broker
+        // fora (503) e reconecta sozinha quando ele volta (200).
+        .AddRabbitMQ(name: "rabbitmq", tags: ["ready"]);
 
     builder.Services.AddSwaggerExtension();
     builder.Services.AddValidatorsFromAssemblyContaining<CriarJogoValidator>();
