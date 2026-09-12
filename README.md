@@ -4,6 +4,25 @@ Microsserviço de catálogo de jogos, biblioteca do usuário e início do fluxo 
 
 ![CI](https://github.com/fcg-grupo-16/catalog-api/actions/workflows/ci.yml/badge.svg)
 
+## Observabilidade
+
+Este serviço expõe métricas Prometheus em `/metrics` sem expô-las no gateway da plataforma. As métricas HTTP são produzidas pelo ASP.NET Core via OpenTelemetry e incluem latência, contagem total e distribuição por status HTTP.
+
+- Endpoint de métricas: `/metrics`
+- Requerimentos do OTLP: `OTEL_SERVICE_NAME` e `OTEL_EXPORTER_OTLP_ENDPOINT`
+- Quando `OTEL_EXPORTER_OTLP_ENDPOINT` estiver ausente, os traces OTLP são desligados para manter `dotnet run` e os testes locais sem ruído de exportação.
+- O endpoint `/metrics` fica fora da autenticação e deve responder `200` sem `Authorization`.
+- Para inspecionar localmente:
+
+```bash
+dotnet run --project src/Fcg.Catalog.Api
+curl -s http://localhost:5000/metrics | head -40
+```
+
+Se o serviço for executado via compose/orquestração, o endpoint fica em `http://localhost:8082/metrics`.
+
+> O nome real da métrica em Prometheus é `http_server_request_duration_seconds`, com labels de `http_response_status_code`, `http_request_method` e `http_route`.
+
 ---
 
 ## 1. Visão geral

@@ -1,3 +1,4 @@
+using Fcg.Catalog.Api.Extensions;
 using Fcg.Catalog.Api.Middlewares;
 using Fcg.Catalog.Application.Validators;
 using Fcg.Catalog.Infrastructure.Extensions;
@@ -92,12 +93,42 @@ try
     builder.Services.AddJwtAuthentication(builder.Configuration);
     builder.Services.AddInfrastructureServices();
     builder.Services.AddMessaging(builder.Configuration);
+    builder.Services.AddObservability(builder.Configuration, builder.Environment);
 
     var app = builder.Build();
 
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
-    app.UseSerilogRequestLogging();
+    app.Use(async (context, next) =>
+    {
+        var activity = System.Diagnostics.Activity.Current;
+        if (activity is not null)
+        {
+            using (Serilog.Context.LogContext.PushProperty("TraceId", activity.TraceId.ToString()))
+            using (Serilog.Context.LogContext.PushProperty("SpanId", activity.SpanId.ToString()))
+            {
+                await next(context);
+                return;
+            }
+        }
+
+        await next(context);
+    });
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.GetLevel = static (httpContext, elapsed, ex) =>
+        {
+            if (ex is not null || httpContext.Response.StatusCode >= 500)
+                return Serilog.Events.LogEventLevel.Error;
+
+            var path = httpContext.Request.Path.Value ?? string.Empty;
+            if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("/metrics", StringComparison.OrdinalIgnoreCase))
+                return Serilog.Events.LogEventLevel.Verbose;
+
+            return Serilog.Events.LogEventLevel.Information;
+        };
+    });
 
     if (app.Environment.IsDevelopment())
     {
@@ -112,6 +143,7 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+    app.MapPrometheusScrapingEndpoint();
 
     app.MapHealthChecks("/health/live", new HealthCheckOptions
     {
