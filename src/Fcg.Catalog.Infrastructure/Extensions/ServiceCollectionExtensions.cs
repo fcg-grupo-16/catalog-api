@@ -100,12 +100,27 @@ public static class ServiceCollectionExtensions
         else
         {
             services.Configure<RedisSettings>(configuration.GetSection(RedisSettings.SectionName));
-            services.AddStackExchangeRedisCache(options =>
+
+            var options = ConfigurationOptions.Parse(redisSettings.ConnectionString);
+            // AbortOnConnectFail=false: o app SOBE com o Redis fora e reconecta depois. Com o
+            // default (true) o Connect LANÇA — e como o multiplexer só é resolvido na primeira
+            // requisição, a exceção estoura FORA dos try/catch do RedisCacheService, virando 500
+            // em toda requisição. Ou seja: o cache derrubaria o serviço, exatamente o oposto do
+            // fail-open que o RedisCacheService implementa. Mesma configuração do users-api.
+            options.AbortOnConnectFail = false;
+            options.ConnectTimeout = 2000;
+            options.SyncTimeout = 2000;
+
+            var multiplexer = ConnectionMultiplexer.Connect(options);
+            services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+
+            services.AddStackExchangeRedisCache(redis =>
             {
-                options.Configuration = redisSettings.ConnectionString;
-                options.InstanceName = redisSettings.InstanceName;
+                // Reusa o MESMO multiplexer do health check e do contador de geração, em vez de
+                // abrir uma segunda conexão com a configuração default (que aborta no boot).
+                redis.ConnectionMultiplexerFactory = () => Task.FromResult<IConnectionMultiplexer>(multiplexer);
+                redis.InstanceName = redisSettings.InstanceName;
             });
-            services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisSettings.ConnectionString));
             services.AddSingleton<ICacheService, RedisCacheService>();
         }
 

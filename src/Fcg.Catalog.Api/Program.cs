@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using MongoDB.Driver;
 using RabbitMQ.Client;
 using Serilog;
+using StackExchange.Redis;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -87,11 +88,24 @@ try
             name: "rabbitmq",
             tags: ["ready"]);
 
-    var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
-    if (!string.IsNullOrWhiteSpace(redisConnectionString))
+    // Registrado só quando o cache está REALMENTE ativo. A connection string sozinha não basta:
+    // o SealedSecret injeta Redis__ConnectionString mesmo com Redis__Enabled ausente/false, e aí
+    // o serviço passaria a depender de um Redis que nem usa.
+    var redisAtivo = builder.Configuration.GetValue("Redis:Enabled", true)
+        && !string.IsNullOrWhiteSpace(builder.Configuration["Redis:ConnectionString"]);
+
+    if (redisAtivo)
     {
         builder.Services.AddHealthChecks()
-            .AddRedis(redisConnectionString, name: "redis", tags: ["ready"]);
+            .AddRedis(
+                // Reusa o multiplexer do DI em vez de abrir uma segunda conexão só para o check.
+                connectionMultiplexerFactory: static sp => sp.GetRequiredService<IConnectionMultiplexer>(),
+                name: "redis",
+                // ⚠️ tag "cache", NÃO "ready" — igual ao users-api. O Redis aqui é degradação, não
+                // indisponibilidade: o RedisCacheService é fail-open em todos os caminhos. Se este
+                // check entrasse em "ready", um Redis fora tiraria o pod do balanceador e derrubaria
+                // o catálogo inteiro por causa de um cache. É o oposto do que o cache existe para ser.
+                tags: ["cache"]);
     }
 
     builder.Services.AddSwaggerExtension();
@@ -161,7 +175,7 @@ try
     });
     app.MapHealthChecks("/health/ready", new HealthCheckOptions
     {
-        Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ + Redis (quando configurado)
+        Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ (Redis fica de fora: tag "cache")
     });
 
     try
