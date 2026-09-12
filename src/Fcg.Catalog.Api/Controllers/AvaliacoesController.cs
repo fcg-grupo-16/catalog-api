@@ -78,7 +78,7 @@ public sealed class AvaliacoesController(
     /// <param name="ct">Token de cancelamento.</param>
     /// <returns>Feed paginado de avaliações.</returns>
     [HttpGet("/api/v1/jogos/{jogoId}/avaliacoes")]
-    [ProducesResponseType(typeof(IReadOnlyList<AvaliacaoResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PaginacaoResponseDto<AvaliacaoResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListarPorJogo(
         string jogoId,
         [FromQuery] int pagina = 1,

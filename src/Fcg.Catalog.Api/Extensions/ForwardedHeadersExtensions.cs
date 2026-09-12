@@ -1,7 +1,10 @@
 using System.Net;
 using Fcg.Catalog.Infrastructure.Settings;
 using Microsoft.AspNetCore.HttpOverrides;
-using IPNetwork = Microsoft.AspNetCore.HttpOverrides.IPNetwork;
+// Alias obrigatório: Microsoft.AspNetCore.HttpOverrides também declara um IPNetwork (obsoleto
+// desde o .NET 9), então o nome fica ambíguo com os dois namespaces importados. Apontamos
+// explicitamente para o tipo do BCL, que é o que KnownIPNetworks espera.
+using IPNetwork = System.Net.IPNetwork;
 
 namespace Fcg.Catalog.Api.Extensions;
 
@@ -31,8 +34,12 @@ public static class ForwardedHeadersExtensions
 
             options.ForwardLimit = settings.ForwardLimit;
 
+            // KnownIPNetworks (não KnownNetworks) e System.Net.IPNetwork: os equivalentes do
+            // Microsoft.AspNetCore.HttpOverrides estão obsoletos desde o .NET 9 (ASPDEPR005).
+            // Limpar os dois é deliberado: o default confia na loopback, e queremos confiar
+            // APENAS nas redes declaradas na configuração.
             options.KnownProxies.Clear();
-            options.KnownNetworks.Clear();
+            options.KnownIPNetworks.Clear();
 
             foreach (var cidr in settings.KnownNetworks)
             {
@@ -41,7 +48,7 @@ public static class ForwardedHeadersExtensions
                     && IPAddress.TryParse(parts[0], out var prefix)
                     && int.TryParse(parts[1], out var length))
                 {
-                    options.KnownNetworks.Add(new IPNetwork(prefix, length));
+                    options.KnownIPNetworks.Add(new IPNetwork(prefix, length));
                 }
             }
         });

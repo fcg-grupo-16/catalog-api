@@ -72,12 +72,11 @@ public static class ObservabilityExtensions
                     options.RecordException = true;
                 })
                 .AddHttpClientInstrumentation()
-                // Spans das operações do MongoDB: responde "a lentidão é o app ou o banco?"
-                // sem chutar. O nome do source vem do driver 3.x; se a versão instalada não
-                // expuser este source, a linha é silenciosamente ignorada e o recurso fica como
-                // melhoria futura. Não inventamos workaround: só registramos o que o driver
-                // realmente entrega.
-                .AddSource("MongoDB.Driver.Core.Extensions.DiagnosticSources")
+                // NÃO há AddSource do MongoDB aqui de propósito. O driver 3.x só emite esses
+                // spans com o pacote MongoDB.Driver.Core.Extensions.DiagnosticSources instalado;
+                // sem ele, um AddSource com o nome do source é silenciosamente ignorado — o que
+                // dá a falsa impressão de que o banco está instrumentado. Fica como melhoria
+                // futura, explícita, em vez de uma linha que não faz nada.
                 .AddSource("MassTransit")
                 .AddOtlpExporter());
         }

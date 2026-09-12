@@ -18,12 +18,12 @@ public sealed class CachedAvaliacaoService(IAvaliacaoService inner, ICacheServic
         return criada;
     }
 
-    public async Task<IReadOnlyList<AvaliacaoResponseDto>> ListarPorJogoAsync(string jogoId, int pagina, int tamanhoPagina, CancellationToken ct = default)
+    public async Task<PaginacaoResponseDto<AvaliacaoResponseDto>> ListarPorJogoAsync(string jogoId, int pagina, int tamanhoPagina, CancellationToken ct = default)
     {
         var generation = await cache.GetGenerationAsync(GrupoDoJogo(jogoId), ct);
         var key = $"avaliacoes:lista:g{generation}:{jogoId}:p{pagina}:t{tamanhoPagina}";
 
-        var cached = await cache.GetAsync<IReadOnlyList<AvaliacaoResponseDto>>(key, ct);
+        var cached = await cache.GetAsync<PaginacaoResponseDto<AvaliacaoResponseDto>>(key, ct);
         if (cached is not null)
             return cached;
 
