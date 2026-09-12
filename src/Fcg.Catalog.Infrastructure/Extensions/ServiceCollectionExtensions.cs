@@ -4,6 +4,7 @@ using Fcg.Catalog.Application.Interfaces;
 using Fcg.Catalog.Application.Services;
 using Fcg.Catalog.Domain.Exceptions;
 using Fcg.Catalog.Domain.Repositories;
+using Fcg.Catalog.Infrastructure.Caching;
 using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Repositories;
@@ -13,9 +14,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Microsoft.OpenApi;
+using StackExchange.Redis;
 
 namespace Fcg.Catalog.Infrastructure.Extensions;
 
@@ -80,7 +83,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IJogoRepository, JogoRepository>();
         services.AddScoped<IBibliotecaRepository, BibliotecaRepository>();
@@ -89,11 +92,36 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
 
-        services.AddScoped<IJogoService, JogoService>();
+        var redisSettings = configuration.GetSection(RedisSettings.SectionName).Get<RedisSettings>() ?? new RedisSettings();
+        if (!redisSettings.Enabled || string.IsNullOrWhiteSpace(redisSettings.ConnectionString))
+        {
+            services.AddSingleton<ICacheService, NoOpCacheService>();
+        }
+        else
+        {
+            services.Configure<RedisSettings>(configuration.GetSection(RedisSettings.SectionName));
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisSettings.ConnectionString;
+                options.InstanceName = redisSettings.InstanceName;
+            });
+            services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisSettings.ConnectionString));
+            services.AddSingleton<ICacheService, RedisCacheService>();
+        }
+
+        services.AddScoped<JogoService>();
+        services.AddScoped<IJogoService>(sp => new CachedJogoService(
+            sp.GetRequiredService<JogoService>(),
+            sp.GetRequiredService<ICacheService>()));
+
         services.AddScoped<IBibliotecaService, BibliotecaService>();
         services.AddScoped<IPurchaseService, PurchaseService>();
         services.AddScoped<IPedidoService, PedidoService>();
-        services.AddScoped<IAvaliacaoService, AvaliacaoService>();
+
+        services.AddScoped<AvaliacaoService>();
+        services.AddScoped<IAvaliacaoService>(sp => new CachedAvaliacaoService(
+            sp.GetRequiredService<AvaliacaoService>(),
+            sp.GetRequiredService<ICacheService>()));
 
         return services;
     }

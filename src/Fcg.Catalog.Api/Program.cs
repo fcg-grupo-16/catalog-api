@@ -87,12 +87,19 @@ try
             name: "rabbitmq",
             tags: ["ready"]);
 
+    var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
+    if (!string.IsNullOrWhiteSpace(redisConnectionString))
+    {
+        builder.Services.AddHealthChecks()
+            .AddRedis(redisConnectionString, name: "redis", tags: ["ready"]);
+    }
+
     builder.Services.AddSwaggerExtension();
     builder.Services.AddValidatorsFromAssemblyContaining<CriarJogoValidator>();
 
     builder.Services.AddMongoDb(builder.Configuration);
     builder.Services.AddJwtAuthentication(builder.Configuration);
-    builder.Services.AddInfrastructureServices();
+    builder.Services.AddInfrastructureServices(builder.Configuration);
     builder.Services.AddMessaging(builder.Configuration);
     builder.Services.AddObservability(builder.Configuration, builder.Environment);
 
@@ -152,7 +159,7 @@ try
     });
     app.MapHealthChecks("/health/ready", new HealthCheckOptions
     {
-        Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ
+        Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ + Redis (quando configurado)
     });
 
     try

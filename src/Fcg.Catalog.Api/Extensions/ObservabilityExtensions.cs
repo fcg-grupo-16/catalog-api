@@ -52,6 +52,7 @@ public static class ObservabilityExtensions
                 }));
 
         otel.WithMetrics(metrics => metrics
+            .AddMeter("Fcg.Catalog.Cache")
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
             .AddRuntimeInstrumentation()
