@@ -3,7 +3,8 @@ using Fcg.Catalog.IntegrationTests.Infrastructure;
 
 namespace Fcg.Catalog.IntegrationTests;
 
-public sealed class MetricsEndpointTests(FcgWebAppFactory factory) : IClassFixture<FcgWebAppFactory>
+[Collection(PlataformaCollection.Nome)]
+public sealed class MetricsEndpointTests(FcgWebAppFactory factory)
 {
     [Fact(DisplayName = "GET /metrics expõe as métricas HTTP no formato Prometheus")]
     public async Task Metrics_ExpoeMetricasHttp()

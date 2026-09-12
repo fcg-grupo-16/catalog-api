@@ -6,17 +6,22 @@ using FluentAssertions;
 
 namespace Fcg.Catalog.IntegrationTests;
 
-public class AvaliacoesIntegrationTests : IAsyncLifetime
+/// <summary>Testes de integração das avaliações e da operação atrás do gateway.</summary>
+/// <remarks>
+/// <b>IClassFixture, e não IAsyncLifetime na classe de teste.</b> O xUnit cria uma INSTÂNCIA DA
+/// CLASSE por método de teste; com a factory num campo de instância, cada teste subia o seu próprio
+/// par Mongo+RabbitMQ. Medido: estes 12 testes levavam 2 min 21 s assim, contra 23 s para os 10
+/// testes de <c>PedidoFlowIntegrationTests</c>, que compartilham a factory. Além do tempo, o
+/// teardown não acontecia (ver o remarks de <see cref="FcgWebAppFactory.DisposeContainersAsync"/>)
+/// e os containers vazavam. O fixture é criado UMA vez por classe e descartado pelo xUnit.
+/// </remarks>
+[Collection(PlataformaCollection.Nome)]
+public class AvaliacoesIntegrationTests(FcgWebAppFactory factory)
 {
-    private readonly FcgWebAppFactory _factory = new();
-
-    public Task InitializeAsync() => _factory.InitializeAsync();
-
-    public async Task DisposeAsync() => await _factory.DisposeAsync();
 
     private HttpClient UserClient(string userId)
     {
-        var client = _factory.CreateClient();
+        var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar(userId));
         return client;
@@ -24,7 +29,7 @@ public class AvaliacoesIntegrationTests : IAsyncLifetime
 
     private HttpClient AdminClient()
     {
-        var client = _factory.CreateClient();
+        var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("admin-1", "Administrador"));
         return client;
@@ -91,67 +96,93 @@ public class AvaliacoesIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Criar_AtrasDoGateway_LocationUsaSchemeEHostEncaminhados()
     {
-        await using var factory = new FcgWebAppFactory(true, "127.0.0.1/32");
-        await factory.InitializeAsync();
-
-        var jogoId = await CriarJogoAsyncWithFactory(factory);
-        var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("user-forwarded-location"));
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/avaliacoes")
+        // Factory PRÓPRIA: este teste precisa da app com outra configuração de ForwardedHeaders,
+        // que é lida no startup. Não dá para reusar o fixture da classe.
+        // `await using` seria um bug aqui: ligaria no DisposeAsync herdado de WebApplicationFactory
+        // e deixaria Mongo e RabbitMQ rodando. Daí o try/finally com DisposeContainersAsync.
+        var gatewayFactory = FcgWebAppFactory.ComForwardedHeaders(true, "127.0.0.1/32");
+        try
         {
-            Content = JsonContent.Create(new
+            await gatewayFactory.InitializeAsync();
+
+            var jogoId = await CriarJogoAsyncWithFactory(gatewayFactory);
+            using var client = gatewayFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("user-forwarded-location"));
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/avaliacoes")
             {
-                jogoId,
-                nota = 5,
-                comentario = "Avaliacao via gateway",
-                titulo = "Gateway",
-                tags = new[] { "forwarded" }
-            })
-        };
-        request.Headers.Add("X-Forwarded-Proto", "https");
-        request.Headers.Add("X-Forwarded-Host", "api.fcg.local");
-        request.Headers.Add("X-Forwarded-For", "203.0.113.10");
+                Content = JsonContent.Create(new
+                {
+                    jogoId,
+                    nota = 5,
+                    comentario = "Avaliacao via gateway",
+                    titulo = "Gateway",
+                    tags = new[] { "forwarded" }
+                })
+            };
+            request.Headers.Add("X-Forwarded-Proto", "https");
+            request.Headers.Add("X-Forwarded-Host", "api.fcg.local");
+            request.Headers.Add("X-Forwarded-For", "203.0.113.10");
 
-        using var response = await client.SendAsync(request);
+            using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        response.Headers.Location.Should().NotBeNull();
-        response.Headers.Location!.ToString().Should().StartWith("https://api.fcg.local/");
+            response.StatusCode.Should().Be(HttpStatusCode.Created);
+            response.Headers.Location.Should().NotBeNull();
+            // Sem ForwardedHeaders o Location sairia com o host INTERNO do cluster, inalcançável
+            // pelo cliente. É o bug concreto que justifica a issue neste serviço.
+            response.Headers.Location!.ToString().Should().StartWith("https://api.fcg.local/");
+        }
+        finally
+        {
+            await gatewayFactory.DisposeContainersAsync();
+        }
     }
 
     [Fact]
     public async Task Criar_SemForwardedHeaders_IgnoraHeadersDoCliente()
     {
-        await using var factory = new FcgWebAppFactory(false, "127.0.0.1/32");
-        await factory.InitializeAsync();
-
-        var jogoId = await CriarJogoAsyncWithFactory(factory);
-        var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("user-forwarded-disabled"));
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/avaliacoes")
+        // Factory PRÓPRIA: este teste precisa da app com outra configuração de ForwardedHeaders,
+        // que é lida no startup. Não dá para reusar o fixture da classe.
+        // `await using` seria um bug aqui: ligaria no DisposeAsync herdado de WebApplicationFactory
+        // e deixaria Mongo e RabbitMQ rodando. Daí o try/finally com DisposeContainersAsync.
+        var gatewayFactory = FcgWebAppFactory.ComForwardedHeaders(false, "127.0.0.1/32");
+        try
         {
-            Content = JsonContent.Create(new
+            await gatewayFactory.InitializeAsync();
+
+            var jogoId = await CriarJogoAsyncWithFactory(gatewayFactory);
+            using var client = gatewayFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("user-forwarded-disabled"));
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/avaliacoes")
             {
-                jogoId,
-                nota = 5,
-                comentario = "Sem forwarded headers",
-                titulo = "Sem gateway",
-                tags = new[] { "disabled" }
-            })
-        };
-        request.Headers.Add("X-Forwarded-Proto", "https");
-        request.Headers.Add("X-Forwarded-Host", "evil.example.com");
-        request.Headers.Add("X-Forwarded-For", "203.0.113.10");
+                Content = JsonContent.Create(new
+                {
+                    jogoId,
+                    nota = 5,
+                    comentario = "Sem forwarded headers",
+                    titulo = "Sem gateway",
+                    tags = new[] { "disabled" }
+                })
+            };
+            request.Headers.Add("X-Forwarded-Proto", "https");
+            request.Headers.Add("X-Forwarded-Host", "evil.example.com");
+            request.Headers.Add("X-Forwarded-For", "203.0.113.10");
 
-        using var response = await client.SendAsync(request);
+            using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        response.Headers.Location.Should().NotBeNull();
-        response.Headers.Location!.ToString().Should().NotContain("evil.example.com");
+            response.StatusCode.Should().Be(HttpStatusCode.Created);
+            response.Headers.Location.Should().NotBeNull();
+            // Garantia de SEGURANÇA: desligado, um cliente não consegue manipular as URLs que a
+            // API gera mandando X-Forwarded-Host.
+            response.Headers.Location!.ToString().Should().NotContain("evil.example.com");
+        }
+        finally
+        {
+            await gatewayFactory.DisposeContainersAsync();
+        }
     }
 
     [Fact]
@@ -250,7 +281,11 @@ public class AvaliacoesIntegrationTests : IAsyncLifetime
         var resp = await client.GetAsync($"/api/v1/jogos/{jogoId}/avaliacoes?pagina=1&tamanhoPagina=10");
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var itens = await resp.Content.ReadFromJsonAsync<List<AvaliacaoDto>>() ?? [];
+        var pagina = await resp.Content.ReadFromJsonAsync<PaginaDto<AvaliacaoDto>>();
+        pagina.Should().NotBeNull();
+        pagina!.Total.Should().Be(3, "o total vem do ContarPorJogoAsync, não do tamanho da página");
+
+        var itens = pagina.Itens;
         itens.Should().HaveCount(3);
         itens[0].DataCriacao.Should().BeOnOrAfter(itens[1].DataCriacao);
         itens[1].DataCriacao.Should().BeOnOrAfter(itens[2].DataCriacao);
@@ -368,6 +403,8 @@ public class AvaliacoesIntegrationTests : IAsyncLifetime
     }
 
     private sealed record JogoDto(string Id);
+
+    private sealed record PaginaDto<T>(IReadOnlyList<T> Itens, int Pagina, int TamanhoPagina, long Total);
     private sealed record AvaliacaoDto(
         string Id,
         string JogoId,
