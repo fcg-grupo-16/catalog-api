@@ -6,11 +6,17 @@ using FluentAssertions;
 
 namespace Fcg.Catalog.IntegrationTests;
 
-public class AvaliacoesIntegrationTests(FcgWebAppFactory factory) : IClassFixture<FcgWebAppFactory>
+public class AvaliacoesIntegrationTests : IAsyncLifetime
 {
+    private readonly FcgWebAppFactory _factory = new();
+
+    public Task InitializeAsync() => _factory.InitializeAsync();
+
+    public async Task DisposeAsync() => await _factory.DisposeAsync();
+
     private HttpClient UserClient(string userId)
     {
-        var client = factory.CreateClient();
+        var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar(userId));
         return client;
@@ -18,10 +24,30 @@ public class AvaliacoesIntegrationTests(FcgWebAppFactory factory) : IClassFixtur
 
     private HttpClient AdminClient()
     {
-        var client = factory.CreateClient();
+        var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("admin-1", "Administrador"));
         return client;
+    }
+
+    private static async Task<string> CriarJogoAsyncWithFactory(FcgWebAppFactory factory)
+    {
+        using var admin = factory.CreateClient();
+        admin.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("admin-factory", "Administrador"));
+
+        var resp = await admin.PostAsJsonAsync("/api/v1/jogos", new
+        {
+            titulo = $"Jogo Avaliacao {Guid.NewGuid():N}",
+            descricao = "Jogo para avaliação de integração.",
+            genero = 2,
+            preco = 49.90m,
+            dataLancamento = "2024-01-01T00:00:00Z"
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var jogo = await resp.Content.ReadFromJsonAsync<JogoDto>();
+        return jogo!.Id;
     }
 
     private async Task<string> CriarJogoAsync()
@@ -60,6 +86,72 @@ public class AvaliacoesIntegrationTests(FcgWebAppFactory factory) : IClassFixtur
         var avaliacao = await resp.Content.ReadFromJsonAsync<AvaliacaoDto>();
         avaliacao.Should().NotBeNull();
         return avaliacao!.Id;
+    }
+
+    [Fact]
+    public async Task Criar_AtrasDoGateway_LocationUsaSchemeEHostEncaminhados()
+    {
+        await using var factory = new FcgWebAppFactory(true, "127.0.0.1/32");
+        await factory.InitializeAsync();
+
+        var jogoId = await CriarJogoAsyncWithFactory(factory);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("user-forwarded-location"));
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/avaliacoes")
+        {
+            Content = JsonContent.Create(new
+            {
+                jogoId,
+                nota = 5,
+                comentario = "Avaliacao via gateway",
+                titulo = "Gateway",
+                tags = new[] { "forwarded" }
+            })
+        };
+        request.Headers.Add("X-Forwarded-Proto", "https");
+        request.Headers.Add("X-Forwarded-Host", "api.fcg.local");
+        request.Headers.Add("X-Forwarded-For", "203.0.113.10");
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().StartWith("https://api.fcg.local/");
+    }
+
+    [Fact]
+    public async Task Criar_SemForwardedHeaders_IgnoraHeadersDoCliente()
+    {
+        await using var factory = new FcgWebAppFactory(false, "127.0.0.1/32");
+        await factory.InitializeAsync();
+
+        var jogoId = await CriarJogoAsyncWithFactory(factory);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("user-forwarded-disabled"));
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/avaliacoes")
+        {
+            Content = JsonContent.Create(new
+            {
+                jogoId,
+                nota = 5,
+                comentario = "Sem forwarded headers",
+                titulo = "Sem gateway",
+                tags = new[] { "disabled" }
+            })
+        };
+        request.Headers.Add("X-Forwarded-Proto", "https");
+        request.Headers.Add("X-Forwarded-Host", "evil.example.com");
+        request.Headers.Add("X-Forwarded-For", "203.0.113.10");
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().NotContain("evil.example.com");
     }
 
     [Fact]

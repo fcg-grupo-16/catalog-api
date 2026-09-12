@@ -18,6 +18,15 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
     private const string RabbitUsername = "guest";
     private const string RabbitPassword = "guest";
 
+    private readonly bool _forwardedHeadersEnabled;
+    private readonly string[] _knownNetworks;
+
+    public FcgWebAppFactory(bool forwardedHeadersEnabled = false, params string[] knownNetworks)
+    {
+        _forwardedHeadersEnabled = forwardedHeadersEnabled;
+        _knownNetworks = knownNetworks;
+    }
+
     private readonly string _databaseName = $"catalogdb_it_{Guid.NewGuid():N}";
     private string? _mongoConnectionString;
 
@@ -58,6 +67,16 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
         builder.UseSetting("RabbitMq:Port", _rabbit.GetMappedPublicPort(5672).ToString());
         builder.UseSetting("RabbitMq:Username", RabbitUsername);
         builder.UseSetting("RabbitMq:Password", RabbitPassword);
+        builder.UseSetting("ForwardedHeaders:Enabled", _forwardedHeadersEnabled ? "true" : "false");
+        builder.UseSetting("ForwardedHeaders:ForwardLimit", "1");
+        builder.UseSetting("ForwardedHeaders:KnownNetworks:0", _knownNetworks.Length > 0 ? _knownNetworks[0] : "127.0.0.1/32");
+        if (_knownNetworks.Length > 1)
+        {
+            for (var i = 1; i < _knownNetworks.Length; i++)
+            {
+                builder.UseSetting($"ForwardedHeaders:KnownNetworks:{i}", _knownNetworks[i]);
+            }
+        }
         // Retry/redelivery CURTOS nos testes: um poison message chega à _error em segundos
         // (em produção os defaults são 3 imediatos + 60/300/900s de redelivery atrasado).
         builder.UseSetting("RabbitMq:ImmediateRetryCount", "1");

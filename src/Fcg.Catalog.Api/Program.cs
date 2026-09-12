@@ -96,6 +96,7 @@ try
 
     builder.Services.AddSwaggerExtension();
     builder.Services.AddValidatorsFromAssemblyContaining<CriarJogoValidator>();
+    builder.Services.AddGatewayForwardedHeaders(builder.Configuration);
 
     builder.Services.AddMongoDb(builder.Configuration);
     builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -105,6 +106,7 @@ try
 
     var app = builder.Build();
 
+    app.UseForwardedHeaders();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
     app.Use(async (context, next) =>

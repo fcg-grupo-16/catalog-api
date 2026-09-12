@@ -10,3 +10,7 @@ data:
   MongoDbSettings__DatabaseName: "catalogdb"
   JwtSettings__Issuer: "FiapCloudGames"
   JwtSettings__Audience: "FiapCloudGames"
+  ForwardedHeaders__Enabled: "true"
+  ForwardedHeaders__KnownNetworks__0: "10.244.0.0/16"
+  ForwardedHeaders__KnownNetworks__1: "10.96.0.0/12"
+  ForwardedHeaders__ForwardLimit: "1"
