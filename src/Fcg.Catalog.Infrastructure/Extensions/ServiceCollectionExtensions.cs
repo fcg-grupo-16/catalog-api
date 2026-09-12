@@ -85,6 +85,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJogoRepository, JogoRepository>();
         services.AddScoped<IBibliotecaRepository, BibliotecaRepository>();
         services.AddScoped<IPedidoRepository, PedidoRepository>();
+        services.AddScoped<IAvaliacaoRepository, AvaliacaoRepository>();
 
         services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
 
@@ -92,6 +93,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBibliotecaService, BibliotecaService>();
         services.AddScoped<IPurchaseService, PurchaseService>();
         services.AddScoped<IPedidoService, PedidoService>();
+        services.AddScoped<IAvaliacaoService, AvaliacaoService>();
 
         return services;
     }

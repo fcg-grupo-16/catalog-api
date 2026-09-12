@@ -1,6 +1,7 @@
 using Fcg.Catalog.Api.Extensions;
 using Fcg.Catalog.Api.Middlewares;
 using Fcg.Catalog.Application.Validators;
+using Fcg.Catalog.Domain.Repositories;
 using Fcg.Catalog.Infrastructure.Extensions;
 using Fcg.Catalog.Infrastructure.Seed;
 using FluentValidation;
@@ -161,6 +162,16 @@ try
     catch (Exception ex)
     {
         Log.Warning(ex, "Seed de dados falhou. A aplicação continuará sem dados iniciais.");
+    }
+
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<IAvaliacaoRepository>().GarantirIndicesAsync();
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Falha ao garantir os índices de avaliações.");
     }
 
     await app.RunAsync();
