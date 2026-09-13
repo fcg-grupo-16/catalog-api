@@ -29,8 +29,16 @@ namespace Fcg.Catalog.IntegrationTests;
 /// Os testes compartilham o mesmo banco, então use identificadores próprios (userId, título de
 /// jogo) em vez de depender do estado da collection.
 /// </para>
+/// <para>
+/// <b><c>DisableParallelization = true</c></b> é o cinto de segurança para quando alguém esquecer
+/// a regra acima. Hoje existe uma única collection, então ele é inócuo; no instante em que uma
+/// classe nova aparecer sem <c>[Collection]</c>, ela formaria a própria collection e voltaria a
+/// rodar <b>em paralelo</b> com esta — reabrindo a tempestade de inicialização. Com esta flag, a
+/// collection compartilhada nunca corre junto de outra. Mesma proteção que o <c>users-api</c> já
+/// tem no <c>IntegrationTestCollection</c>.
+/// </para>
 /// </remarks>
-[CollectionDefinition(Nome)]
+[CollectionDefinition(Nome, DisableParallelization = true)]
 public sealed class PlataformaCollection : ICollectionFixture<FcgWebAppFactory>
 {
     public const string Nome = "plataforma-fcg";
