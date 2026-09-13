@@ -10,3 +10,12 @@ data:
   MongoDbSettings__DatabaseName: "catalogdb"
   JwtSettings__Issuer: "FiapCloudGames"
   JwtSettings__Audience: "FiapCloudGames"
+  # Cache distribuído (Fase 3). A connection string é sensível e vem do Secret; este é o
+  # interruptor. Sem ele o serviço sobe com cache no-op e o requisito fica inativo.
+  Redis__Enabled: "true"
+  Redis__InstanceName: "fcg:catalog:"
+  # Confiança em X-Forwarded-* — só faz sentido com um proxy na frente (Kong).
+  ForwardedHeaders__Enabled: "true"
+  ForwardedHeaders__KnownNetworks__0: "10.244.0.0/16"
+  ForwardedHeaders__KnownNetworks__1: "10.96.0.0/12"
+  ForwardedHeaders__ForwardLimit: "1"

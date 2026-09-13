@@ -4,6 +4,7 @@ using Fcg.Catalog.Application.Interfaces;
 using Fcg.Catalog.Application.Services;
 using Fcg.Catalog.Domain.Exceptions;
 using Fcg.Catalog.Domain.Repositories;
+using Fcg.Catalog.Infrastructure.Caching;
 using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Repositories;
@@ -13,9 +14,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Microsoft.OpenApi;
+using StackExchange.Redis;
 
 namespace Fcg.Catalog.Infrastructure.Extensions;
 
@@ -80,18 +83,60 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IJogoRepository, JogoRepository>();
         services.AddScoped<IBibliotecaRepository, BibliotecaRepository>();
         services.AddScoped<IPedidoRepository, PedidoRepository>();
+        services.AddScoped<IAvaliacaoRepository, AvaliacaoRepository>();
 
         services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
 
-        services.AddScoped<IJogoService, JogoService>();
+        var redisSettings = configuration.GetSection(RedisSettings.SectionName).Get<RedisSettings>() ?? new RedisSettings();
+        if (!redisSettings.Enabled || string.IsNullOrWhiteSpace(redisSettings.ConnectionString))
+        {
+            services.AddSingleton<ICacheService, NoOpCacheService>();
+        }
+        else
+        {
+            services.Configure<RedisSettings>(configuration.GetSection(RedisSettings.SectionName));
+
+            var options = ConfigurationOptions.Parse(redisSettings.ConnectionString);
+            // AbortOnConnectFail=false: o app SOBE com o Redis fora e reconecta depois. Com o
+            // default (true) o Connect LANÇA — e como o multiplexer só é resolvido na primeira
+            // requisição, a exceção estoura FORA dos try/catch do RedisCacheService, virando 500
+            // em toda requisição. Ou seja: o cache derrubaria o serviço, exatamente o oposto do
+            // fail-open que o RedisCacheService implementa. Mesma configuração do users-api.
+            options.AbortOnConnectFail = false;
+            options.ConnectTimeout = 2000;
+            options.SyncTimeout = 2000;
+
+            var multiplexer = ConnectionMultiplexer.Connect(options);
+            services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+
+            services.AddStackExchangeRedisCache(redis =>
+            {
+                // Reusa o MESMO multiplexer do health check e do contador de geração, em vez de
+                // abrir uma segunda conexão com a configuração default (que aborta no boot).
+                redis.ConnectionMultiplexerFactory = () => Task.FromResult<IConnectionMultiplexer>(multiplexer);
+                redis.InstanceName = redisSettings.InstanceName;
+            });
+            services.AddSingleton<ICacheService, RedisCacheService>();
+        }
+
+        services.AddScoped<JogoService>();
+        services.AddScoped<IJogoService>(sp => new CachedJogoService(
+            sp.GetRequiredService<JogoService>(),
+            sp.GetRequiredService<ICacheService>()));
+
         services.AddScoped<IBibliotecaService, BibliotecaService>();
         services.AddScoped<IPurchaseService, PurchaseService>();
         services.AddScoped<IPedidoService, PedidoService>();
+
+        services.AddScoped<AvaliacaoService>();
+        services.AddScoped<IAvaliacaoService>(sp => new CachedAvaliacaoService(
+            sp.GetRequiredService<AvaliacaoService>(),
+            sp.GetRequiredService<ICacheService>()));
 
         return services;
     }

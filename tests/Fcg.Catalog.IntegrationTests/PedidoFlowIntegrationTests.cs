@@ -10,7 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fcg.Catalog.IntegrationTests;
 
-public class PedidoFlowIntegrationTests(FcgWebAppFactory factory) : IClassFixture<FcgWebAppFactory>
+[Collection(PlataformaCollection.Nome)]
+public class PedidoFlowIntegrationTests(FcgWebAppFactory factory)
 {
     private HttpClient AdminClient()
     {

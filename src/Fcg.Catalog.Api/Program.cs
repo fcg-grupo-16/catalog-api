@@ -1,5 +1,7 @@
+using Fcg.Catalog.Api.Extensions;
 using Fcg.Catalog.Api.Middlewares;
 using Fcg.Catalog.Application.Validators;
+using Fcg.Catalog.Domain.Repositories;
 using Fcg.Catalog.Infrastructure.Extensions;
 using Fcg.Catalog.Infrastructure.Seed;
 using FluentValidation;
@@ -7,6 +9,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using MongoDB.Driver;
 using RabbitMQ.Client;
 using Serilog;
+using StackExchange.Redis;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -85,19 +88,71 @@ try
             name: "rabbitmq",
             tags: ["ready"]);
 
+    // Registrado só quando o cache está REALMENTE ativo. A connection string sozinha não basta:
+    // o SealedSecret injeta Redis__ConnectionString mesmo com Redis__Enabled ausente/false, e aí
+    // o serviço passaria a depender de um Redis que nem usa.
+    var redisAtivo = builder.Configuration.GetValue("Redis:Enabled", true)
+        && !string.IsNullOrWhiteSpace(builder.Configuration["Redis:ConnectionString"]);
+
+    if (redisAtivo)
+    {
+        builder.Services.AddHealthChecks()
+            .AddRedis(
+                // Reusa o multiplexer do DI em vez de abrir uma segunda conexão só para o check.
+                connectionMultiplexerFactory: static sp => sp.GetRequiredService<IConnectionMultiplexer>(),
+                name: "redis",
+                // ⚠️ tag "cache", NÃO "ready" — igual ao users-api. O Redis aqui é degradação, não
+                // indisponibilidade: o RedisCacheService é fail-open em todos os caminhos. Se este
+                // check entrasse em "ready", um Redis fora tiraria o pod do balanceador e derrubaria
+                // o catálogo inteiro por causa de um cache. É o oposto do que o cache existe para ser.
+                tags: ["cache"]);
+    }
+
     builder.Services.AddSwaggerExtension();
     builder.Services.AddValidatorsFromAssemblyContaining<CriarJogoValidator>();
+    builder.Services.AddGatewayForwardedHeaders(builder.Configuration);
 
     builder.Services.AddMongoDb(builder.Configuration);
     builder.Services.AddJwtAuthentication(builder.Configuration);
-    builder.Services.AddInfrastructureServices();
+    builder.Services.AddInfrastructureServices(builder.Configuration);
     builder.Services.AddMessaging(builder.Configuration);
+    builder.Services.AddObservability(builder.Configuration, builder.Environment);
 
     var app = builder.Build();
 
+    app.UseForwardedHeaders();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
-    app.UseSerilogRequestLogging();
+    app.Use(async (context, next) =>
+    {
+        var activity = System.Diagnostics.Activity.Current;
+        if (activity is not null)
+        {
+            using (Serilog.Context.LogContext.PushProperty("TraceId", activity.TraceId.ToString()))
+            using (Serilog.Context.LogContext.PushProperty("SpanId", activity.SpanId.ToString()))
+            {
+                await next(context);
+                return;
+            }
+        }
+
+        await next(context);
+    });
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.GetLevel = static (httpContext, elapsed, ex) =>
+        {
+            if (ex is not null || httpContext.Response.StatusCode >= 500)
+                return Serilog.Events.LogEventLevel.Error;
+
+            var path = httpContext.Request.Path.Value ?? string.Empty;
+            if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("/metrics", StringComparison.OrdinalIgnoreCase))
+                return Serilog.Events.LogEventLevel.Verbose;
+
+            return Serilog.Events.LogEventLevel.Information;
+        };
+    });
 
     if (app.Environment.IsDevelopment())
     {
@@ -112,6 +167,7 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+    app.MapPrometheusScrapingEndpoint();
 
     app.MapHealthChecks("/health/live", new HealthCheckOptions
     {
@@ -119,7 +175,7 @@ try
     });
     app.MapHealthChecks("/health/ready", new HealthCheckOptions
     {
-        Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ
+        Predicate = check => check.Tags.Contains("ready")  // Mongo + RabbitMQ (Redis fica de fora: tag "cache")
     });
 
     try
@@ -129,6 +185,16 @@ try
     catch (Exception ex)
     {
         Log.Warning(ex, "Seed de dados falhou. A aplicação continuará sem dados iniciais.");
+    }
+
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<IAvaliacaoRepository>().GarantirIndicesAsync();
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Falha ao garantir os índices de avaliações.");
     }
 
     await app.RunAsync();

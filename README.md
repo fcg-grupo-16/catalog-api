@@ -4,6 +4,69 @@ Microsserviço de catálogo de jogos, biblioteca do usuário e início do fluxo 
 
 ![CI](https://github.com/fcg-grupo-16/catalog-api/actions/workflows/ci.yml/badge.svg)
 
+## Observabilidade
+
+Este serviço expõe métricas Prometheus em `/metrics` sem expô-las no gateway da plataforma. As métricas HTTP são produzidas pelo ASP.NET Core via OpenTelemetry e incluem latência, contagem total e distribuição por status HTTP.
+
+- Endpoint de métricas: `/metrics`
+- Requerimentos do OTLP: `OTEL_SERVICE_NAME` e `OTEL_EXPORTER_OTLP_ENDPOINT`
+- Quando `OTEL_EXPORTER_OTLP_ENDPOINT` estiver ausente, os traces OTLP são desligados para manter `dotnet run` e os testes locais sem ruído de exportação.
+- O endpoint `/metrics` fica fora da autenticação e deve responder `200` sem `Authorization`.
+- Para inspecionar localmente:
+
+```bash
+dotnet run --project src/Fcg.Catalog.Api
+curl -s http://localhost:5000/metrics | head -40
+```
+
+Se o serviço for executado via compose/orquestração, o endpoint fica em `http://localhost:8082/metrics`.
+
+> O nome real da métrica em Prometheus é `http_server_request_duration_seconds`, com labels de `http_response_status_code`, `http_request_method` e `http_route`.
+
+---
+
+## Cache distribuído (Redis)
+
+As duas leituras mais caras do serviço são cacheadas em Redis via `IDistributedCache` + `StackExchange.Redis`.
+
+| Chave | O que guarda | TTL | Invalidada por |
+| --- | --- | --- | --- |
+| `jogo:{id}` | um jogo | 10 min | `PUT`/`DELETE` daquele jogo |
+| `jogos:lista:g{N}:p{p}:t{t}:gen{genero}` | página do catálogo | 60 s | geração `jogos` (`POST`/`PUT`/`DELETE`/lote) |
+| `avaliacoes:resumo:{jogoId}` | agregação de notas | 120 s | avaliação criada/removida naquele jogo |
+| `avaliacoes:lista:g{N}:{jogoId}:p{p}:t{t}` | feed paginado | 30 s | geração `avaliacoes:{jogoId}` |
+
+O alvo principal é o **resumo de avaliações**: ele vem de um aggregation pipeline (`$match` + `$facet` + `$group`) e é chamado em toda página de jogo.
+
+**Invalidação por geração.** Listas são paginadas, ou seja, N chaves para o mesmo conteúdo. Em vez de apagar N chaves, um contador (`gen:{grupo}`) entra na chave e é incrementado na escrita — uma operação, independente do tamanho do lote. As chaves antigas ficam órfãs e morrem por TTL.
+
+A geração das avaliações é **por jogo** (`avaliacoes:{jogoId}`), não global: uma avaliação no jogo A não pode zerar o feed do jogo B.
+
+> ### ⚠️ Nunca cacheie dado por usuário sem o `usuarioId` na chave
+>
+> `GET /api/v1/biblioteca` e `GET /api/v1/pedidos/{orderId}` **não são cacheados**, de propósito. A biblioteca é por usuário: uma chave sem o `usuarioId` faria o usuário A receber a biblioteca do usuário B — vazamento de dados entre contas. O status do pedido é justamente o que o cliente fica *pollando* para ver mudar. `CacheRegressaoTests` falha se alguém envolver esses services num decorator de cache.
+
+**Fail-open.** Redis fora do ar não pode virar erro para o usuário: todo método do `RedisCacheService` tem `try/catch` e a requisição segue para o MongoDB. Por isso o health check do Redis usa a tag **`cache`**, e não `ready` — se usasse `ready`, um Redis indisponível tiraria o pod do balanceador e derrubaria o catálogo por causa de um cache.
+
+Configuração (`Redis:*`): `Enabled` é o interruptor, `ConnectionString` vem do Secret, `InstanceName` (`fcg:catalog:`) prefixa toda chave e isola o keyspace do serviço na instância compartilhada. Sem connection string, o serviço sobe com cache no-op — é o que mantém `dotnet run` e os testes de integração rodando sem Redis.
+
+---
+
+## Operação atrás do API Gateway
+
+Quando a API roda atrás do Kong, o ASP.NET Core precisa ser informado disso — senão ele enxerga o IP e o host do **proxy**, não do cliente. Dois sintomas concretos:
+
+1. **`Location` inútil nos 201.** `POST /api/v1/jogos` e `POST /api/v1/avaliacoes` devolvem `201 Created` com header `Location`. Sem `ForwardedHeaders`, a URL é montada com o host interno do cluster (`http://catalog-api:8080/...`), que o cliente não consegue resolver.
+2. **Logs inúteis.** Todo request loga o IP do pod do gateway, o que torna impossível investigar origem de tráfego.
+
+> ### ⚠️ `X-Forwarded-*` é header controlado pelo cliente
+>
+> Confiar nele sem restringir a origem permite que qualquer um forje o próprio IP e o host das URLs que a API gera. Por isso: **desligado por padrão** no `appsettings.json`, `KnownProxies`/`KnownIPNetworks` são **limpos** (o default confia na loopback) e só as redes declaradas em `ForwardedHeaders:KnownNetworks` passam a ser confiáveis. `ForwardLimit` é 1 — um único proxy na cadeia.
+
+Quem liga é o ConfigMap do Kubernetes, com os CIDRs do cluster (`10.244.0.0/16` para pods, `10.96.0.0/12` para Services). Em dev não há proxy na frente, então ligar localmente seria pior que não ter.
+
+`app.UseForwardedHeaders()` é o **primeiro** middleware do pipeline: o `CorrelationIdMiddleware` e o request logging do Serilog registram o IP, e a geração de URL absoluta depende de `Scheme`/`Host` — tudo que rodasse antes veria os valores do proxy.
+
 ---
 
 ## 1. Visão geral
@@ -318,7 +381,14 @@ O `202 Accepted` significa que a compra foi **aceita para processamento**, não 
 | DELETE | `/api/v1/jogos/{id}` | `ApenasAdmin` (role `Administrador`) | Desativa (soft delete) um jogo. Retorna `204 No Content`. |
 | GET | `/api/v1/biblioteca` | `UsuarioAutenticado` | Lista a biblioteca do usuário autenticado (id vindo da claim do token). |
 | POST | `/api/v1/biblioteca` | `UsuarioAutenticado` | Inicia a compra de um jogo: publica `OrderPlacedEvent`. Retorna `202 Accepted`. |
-| GET | `/health` | Anônimo | Health check. |
+| POST | `/api/v1/avaliacoes` | `UsuarioAutenticado` | Cria a avaliação de um jogo (uma por usuário/jogo). `201`, ou `409` se já avaliou. |
+| GET | `/api/v1/avaliacoes/{id}` | `UsuarioAutenticado` | Obtém uma avaliação por ID. |
+| GET | `/api/v1/jogos/{jogoId}/avaliacoes` | `UsuarioAutenticado` | Feed paginado, mais recentes primeiro (`pagina`, `tamanhoPagina`, `Total`). |
+| GET | `/api/v1/jogos/{jogoId}/avaliacoes/resumo` | `UsuarioAutenticado` | **Agregação**: total, média e distribuição de notas (1–5). |
+| POST | `/api/v1/avaliacoes/{id}/util` | `UsuarioAutenticado` | Marca como útil (`$inc` atômico). Devolve o total novo. |
+| DELETE | `/api/v1/avaliacoes/{id}` | Autor ou `Administrador` | Remove a avaliação. `204`, ou `403` se não for o autor. |
+| GET | `/metrics` | Anônimo | Métricas no formato Prometheus. |
+| GET | `/health/live`, `/health/ready` | Anônimo | Liveness (só processo) e readiness (Mongo + RabbitMQ). |
 
 > O controller de jogos exige `UsuarioAutenticado` por padrão, mas as ações de **leitura** (`GET`) são marcadas com `AllowAnonymous`; as ações de **escrita** exigem a role `Administrador`. O controller de biblioteca exige usuário autenticado em todas as ações.
 
@@ -334,7 +404,11 @@ Os testes unitários ficam em `tests/Fcg.Catalog.UnitTests` (xUnit) e cobrem ent
 dotnet test -c Release
 ```
 
-A pipeline de CI (`.github/workflows/ci.yml`) roda `dotnet restore`, `dotnet build -c Release` e `dotnet test -c Release` em todo push e PR para `main`.
+Os testes de integração ficam em `tests/Fcg.Catalog.IntegrationTests` e sobem MongoDB (replica set `rs0`) e RabbitMQ reais via **Testcontainers** — exigem Docker rodando.
+
+> ⚠️ As suítes compartilham a `FcgWebAppFactory` por `IClassFixture<T>`, o que sobe **um** par de containers por classe. Não troque isso por uma factory em campo de instância: o xUnit cria uma instância da classe por teste, e cada teste passaria a subir o seu próprio par (medido: 2 min 21 s contra 23 s). E o `FcgWebAppFactory` precisa de um construtor **sem parâmetros** — parâmetros opcionais não satisfazem o `IClassFixture`, e a suíte inteira falha em 1 ms sem executar nada.
+
+A pipeline de CI (`.github/workflows/ci.yml`) roda `dotnet restore`, `dotnet build -c Release`, um **scan de pacotes vulneráveis** (`dotnet list package --vulnerable --include-transitive`, que falha o build se houver qualquer achado) e `dotnet test -c Release`, em todo push e PR para `main`.
 
 ---
 
@@ -379,7 +453,7 @@ Os manifestos vivem em `k8s/`:
 
 | Arquivo | Função |
 | --- | --- |
-| `k8s/configmap.yaml` | `ConfigMap` `catalog-api-config` com config não sensível (`ASPNETCORE_ENVIRONMENT`, `RabbitMq__Host`, `MongoDbSettings__DatabaseName`, `JwtSettings__Issuer`, `JwtSettings__Audience`). |
+| `k8s/configmap.yaml` | `ConfigMap` `catalog-api-config` com config não sensível (`ASPNETCORE_ENVIRONMENT`, `RabbitMq__Host`, `MongoDbSettings__DatabaseName`, `JwtSettings__*`, `Redis__Enabled`/`Redis__InstanceName`, `ForwardedHeaders__*`). |
 | `k8s/secret.yaml` | `Secret` `catalog-api-secret` com dados sensíveis (`MongoDbSettings__ConnectionString`, `JwtSettings__SecretKey`, credenciais do RabbitMQ). A `SecretKey` deve bater com a da `users-api`. |
 | `k8s/deployment.yaml` | `Deployment` `catalog-api` (1 réplica, container na porta 8080, `envFrom` ConfigMap+Secret, liveness/readiness em `/health`). |
 | `k8s/service.yaml` | `Service` `catalog-api` do tipo `ClusterIP` (porta 80 → targetPort 8080). |
