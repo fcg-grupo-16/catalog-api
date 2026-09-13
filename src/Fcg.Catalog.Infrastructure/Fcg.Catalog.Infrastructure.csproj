@@ -10,6 +10,17 @@
     <PackageReference Include="MongoDB.EntityFrameworkCore" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.12" />
     <PackageReference Include="StackExchange.Redis" Version="2.13.17" />
+    <!-- Pin direto do RabbitMQ.Client. O MassTransit 8.5.4 declara 7.1.2 como versão MÍNIMA
+         (não travada), e a 7.1.2 tem uma corrida no shutdown de canal: libera um SemaphoreSlim
+         já descartado em MaybeHandlePublisherConfirmationTcsOnChannelShutdownAsync. Como a
+         exceção sobe numa thread do pool e ninguém a observa, ela derruba o processo inteiro —
+         nos testes isso mata o HOST DE TESTE, e o runner ainda imprime "Passed!" com um total
+         PARCIAL, o que parece sucesso. Corrigido na 7.2.0 pelo upstream #1873 ("Do not handle
+         publisher confirms when disposed"). Mesma versão que o users-api já usa.
+         Fica em Infrastructure, e não no csproj de teste como no users-api, porque aqui o
+         projeto de teste não referencia RabbitMQ.Client direto — pinar lá deixaria PRODUÇÃO
+         em 7.1.2. -->
+    <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
     <!-- Pin direto para corrigir a vulnerabilidade transitiva GHSA-v5pm-xwqc-g5wc
          (Microsoft.OpenApi 2.4.1, high). -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
