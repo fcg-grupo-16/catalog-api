@@ -122,7 +122,6 @@ try
 
     app.UseForwardedHeaders();
     app.UseMiddleware<CorrelationIdMiddleware>();
-    app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
     app.Use(async (context, next) =>
     {
         var activity = System.Diagnostics.Activity.Current;
@@ -138,6 +137,15 @@ try
 
         await next(context);
     });
+
+    // O REQUEST-LOGGING FICA FORA DO HANDLER DE EXCEÇÃO. Registrado DEPOIS, o Serilog virava o
+    // middleware INTERNO: a exceção escapava por ele antes de chegar ao handler, ele a via como não
+    // tratada e registrava nível `Error` com `StatusCode` 500 — enquanto o cliente recebia 409.
+    // Medido: avaliação duplicada respondia 409 e o log gravava Error/500 (issue #26 — mesmo defeito
+    // da users-api#29, corrigido lá do mesmo jeito).
+    //
+    // ⚠️ Precisa continuar DEPOIS do push de TraceId/SpanId: invertê-los faria a linha de request
+    // perder a correlação com o trace. Foi o erro que quase passou na correção do users-api.
     app.UseSerilogRequestLogging(options =>
     {
         options.GetLevel = static (httpContext, elapsed, ex) =>
@@ -153,6 +161,8 @@ try
             return Serilog.Events.LogEventLevel.Information;
         };
     });
+
+    app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
     if (app.Environment.IsDevelopment())
     {
