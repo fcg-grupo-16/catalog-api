@@ -35,6 +35,34 @@ public class AvaliacoesIntegrationTests(FcgWebAppFactory factory)
         return client;
     }
 
+    /// <summary>
+    /// Descreve a resposta inteira — status, <c>Location</c> e corpo — para entrar na mensagem de
+    /// falha da asserção.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Existe por causa da <see href="https://github.com/fcg-grupo-16/catalog-api/issues/24">#24</see>.
+    /// A falha intermitente deste arquivo segue sem causa raiz por um motivo específico: a única
+    /// evidência que sobrou foi <c>Expected ... to be Created</c>, e isso não distingue um 500 do
+    /// domínio de um 400 de validação — causas completamente diferentes.
+    /// </para>
+    /// <para>
+    /// A taxa é baixa demais para reproduzir sob demanda — a contagem de execuções limpas está na
+    /// issue, que é datada, e não aqui, onde envelheceria em silêncio. A próxima ocorrência pode
+    /// demorar e precisa se explicar sozinha. Ler o corpo aqui é seguro: o <c>HttpClient</c> usa
+    /// <c>ResponseContentRead</c> por padrão e bufferiza o conteúdo, então um
+    /// <c>ReadFromJsonAsync</c> depois não pega o stream vazio.
+    /// </para>
+    /// </remarks>
+    private static async Task<string> DescreverAsync(HttpResponseMessage resposta)
+    {
+        var corpo = await resposta.Content.ReadAsStringAsync();
+
+        return $"status={(int)resposta.StatusCode} {resposta.ReasonPhrase}"
+            + $"; Location={resposta.Headers.Location?.ToString() ?? "(ausente)"}"
+            + $"; corpo={(string.IsNullOrWhiteSpace(corpo) ? "(vazio)" : corpo)}";
+    }
+
     private static async Task<string> CriarJogoAsyncWithFactory(FcgWebAppFactory factory)
     {
         using var admin = factory.CreateClient();
@@ -50,7 +78,7 @@ public class AvaliacoesIntegrationTests(FcgWebAppFactory factory)
             dataLancamento = "2024-01-01T00:00:00Z"
         });
 
-        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        resp.StatusCode.Should().Be(HttpStatusCode.Created, "a criação do jogo respondeu {0}", await DescreverAsync(resp));
         var jogo = await resp.Content.ReadFromJsonAsync<JogoDto>();
         return jogo!.Id;
     }
@@ -67,7 +95,7 @@ public class AvaliacoesIntegrationTests(FcgWebAppFactory factory)
             dataLancamento = "2024-01-01T00:00:00Z"
         });
 
-        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        resp.StatusCode.Should().Be(HttpStatusCode.Created, "a criação do jogo respondeu {0}", await DescreverAsync(resp));
         var jogo = await resp.Content.ReadFromJsonAsync<JogoDto>();
         return jogo!.Id;
     }
@@ -127,11 +155,14 @@ public class AvaliacoesIntegrationTests(FcgWebAppFactory factory)
 
             using var response = await client.SendAsync(request);
 
-            response.StatusCode.Should().Be(HttpStatusCode.Created);
-            response.Headers.Location.Should().NotBeNull();
+            var descricao = await DescreverAsync(response);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Created, "a resposta foi {0}", descricao);
+            response.Headers.Location.Should().NotBeNull("a resposta foi {0}", descricao);
             // Sem ForwardedHeaders o Location sairia com o host INTERNO do cluster, inalcançável
             // pelo cliente. É o bug concreto que justifica a issue neste serviço.
-            response.Headers.Location!.ToString().Should().StartWith("https://api.fcg.local/");
+            response.Headers.Location!.ToString().Should()
+                .StartWith("https://api.fcg.local/", "a resposta foi {0}", descricao);
         }
         finally
         {
@@ -173,11 +204,14 @@ public class AvaliacoesIntegrationTests(FcgWebAppFactory factory)
 
             using var response = await client.SendAsync(request);
 
-            response.StatusCode.Should().Be(HttpStatusCode.Created);
-            response.Headers.Location.Should().NotBeNull();
+            var descricao = await DescreverAsync(response);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Created, "a resposta foi {0}", descricao);
+            response.Headers.Location.Should().NotBeNull("a resposta foi {0}", descricao);
             // Garantia de SEGURANÇA: desligado, um cliente não consegue manipular as URLs que a
             // API gera mandando X-Forwarded-Host.
-            response.Headers.Location!.ToString().Should().NotContain("evil.example.com");
+            response.Headers.Location!.ToString().Should()
+                .NotContain("evil.example.com", "a resposta foi {0}", descricao);
         }
         finally
         {
