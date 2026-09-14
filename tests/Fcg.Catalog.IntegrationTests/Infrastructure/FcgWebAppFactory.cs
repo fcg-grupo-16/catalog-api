@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using DotNet.Testcontainers.Containers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,9 +89,42 @@ public sealed class FcgWebAppFactory : WebApplicationFactory<Program>, IAsyncLif
 
     public async Task InitializeAsync()
     {
-        await _mongo.StartAsync();
-        await _rabbit.StartAsync();
+        await SubirAsync("MongoDB (replica set rs0)", _mongo);
+        await SubirAsync("RabbitMQ", _rabbit);
         _mongoConnectionString = _mongo.GetConnectionString();
+    }
+
+    /// <summary>
+    /// Sobe um container rotulando a FASE e o tempo decorrido em caso de falha.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Existe por causa da <see href="https://github.com/fcg-grupo-16/catalog-api/issues/24">#24</see>,
+    /// e o motivo é uma medição. Um teste de gateway leva <b>11 s</b>, e quase tudo é esta janela:
+    /// MongoDB 4,6–6,4 s, RabbitMQ 5,3–6,3 s, as requisições HTTP na casa das dezenas de ms. A falha
+    /// intermitente registrada na issue durou <b>4 s</b> — dentro da subida do Mongo, que é a primeira.
+    /// </para>
+    /// <para>
+    /// A issue havia concluído o contrário ("4 s significa que o teste rodou e quebrou numa
+    /// asserção"), porque comparou 4 s contra 1 ms em vez de contra a duração real. Rotular a fase
+    /// transforma um "4 s" mudo em "morreu subindo o Mongo", que é a diferença entre investigar a API
+    /// e investigar a infraestrutura de teste.
+    /// </para>
+    /// </remarks>
+    private static async Task SubirAsync(string nome, IContainer container)
+    {
+        var relogio = Stopwatch.StartNew();
+
+        try
+        {
+            await container.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Falha ao subir o container {nome} após {relogio.Elapsed.TotalSeconds:F1}s. "
+                + "Isto é INFRAESTRUTURA DE TESTE, não comportamento da API — ver issue #24.", ex);
+        }
     }
 
     /// <summary>Eventos de log emitidos pela aplicação durante o teste (issue #26).</summary>
