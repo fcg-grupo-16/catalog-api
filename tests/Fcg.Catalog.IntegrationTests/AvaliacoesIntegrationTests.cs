@@ -211,6 +211,63 @@ public class AvaliacoesIntegrationTests(FcgWebAppFactory factory)
         body.UsuarioId.Should().Be("user-avaliacao-create");
     }
 
+    [Fact(DisplayName = "Avaliação duplicada é logada como 409, e não como 500/Error")]
+    public async Task Criar_Duplicada_LogaStatusRespondido()
+    {
+        // FACTORY PRÓPRIA, e o motivo é sutil: o `UseSerilogRequestLogging` escreve no `Log.Logger`
+        // ESTÁTICO do Serilog, enquanto o middleware de exceção escreve pelo ILogger<T> da DI. Esta
+        // suíte constrói três hosts no mesmo processo (o da collection e os dois de
+        // `ComForwardedHeaders`), e o último a subir sobrescreve o logger estático — então um sink
+        // registrado na factory compartilhada recebe o Warning do middleware mas PERDE a linha de
+        // request. Medido: o teste passava isolado e falhava na suíte, capturando 1 evento
+        // (`Warning:/api/v1/avaliacoes`) e nenhum com StatusCode.
+        //
+        // ⚠️ O custo é um par de containers a mais, que é justamente o que a #24 investiga. Se aquela
+        // issue concluir pela redução de factories, este teste entra na conta.
+        var proprio = new FcgWebAppFactory();
+
+        try
+        {
+            await proprio.InitializeAsync();
+
+            var jogoId = await CriarJogoAsyncWithFactory(proprio);
+            using var client = proprio.CreateClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", JwtTokenHelper.Gerar("user-log-conflito"));
+
+            var corpo = new { jogoId, nota = 5, comentario = "duplicada", titulo = "Dup", tags = new[] { "dup" } };
+
+            (await client.PostAsJsonAsync("/api/v1/avaliacoes", corpo)).StatusCode
+                .Should().Be(HttpStatusCode.Created);
+
+            proprio.Log.Limpar();
+
+            var conflito = await client.PostAsJsonAsync("/api/v1/avaliacoes", corpo);
+            conflito.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            // O que o CLIENTE recebe sempre esteve certo. O que estava errado era o log: o
+            // request-logging era interno ao handler de exceção, via a exceção escapar e registrava
+            // Error/500 para uma requisição que respondeu 409 (issue #26).
+            var requisicoes = proprio.Log.DeRequisicao("/api/v1/avaliacoes")
+                .Where(e => CapturaDeLog.StatusDe(e) is not null)
+                .ToList();
+
+            requisicoes.Should().NotBeEmpty("o request-logging precisa registrar a requisição");
+            requisicoes.Should().OnlyContain(e => CapturaDeLog.StatusDe(e) == 409);
+            requisicoes.Should().NotContain(e => e.Level >= Serilog.Events.LogEventLevel.Error);
+
+            // Guarda contra regressão de ordem: pondo o request-logging ANTES do push de TraceId, a
+            // linha de request perde a correlação com o trace sem nenhum teste reclamar.
+            requisicoes.Should().OnlyContain(
+                e => e.Properties.ContainsKey("TraceId"),
+                "a linha de request precisa continuar correlacionada com o trace");
+        }
+        finally
+        {
+            await proprio.DisposeContainersAsync();
+        }
+    }
+
     [Fact]
     public async Task Criar_DuasVezesMesmoUsuarioEJogo_RetornaConflict()
     {
