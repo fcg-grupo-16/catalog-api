@@ -1,6 +1,7 @@
 using Fcg.Catalog.Api.Extensions;
 using Fcg.Catalog.Application.DTOs.Request;
 using Fcg.Catalog.Application.DTOs.Response;
+using Fcg.Catalog.Application.Interfaces;
 using Fcg.Catalog.Application.Services;
 using Fcg.Catalog.Domain.Enums;
 using FluentValidation;
@@ -18,6 +19,7 @@ namespace Fcg.Catalog.Api.Controllers;
 [Authorize(Policy = "UsuarioAutenticado")]
 public sealed class JogosController(
     IJogoService jogoService,
+    IIndiceDeJogos indiceDeJogos,
     IValidator<CriarJogoRequestDto> criarValidator,
     IValidator<List<CriarJogoRequestDto>> criarListValidator,
     IValidator<AtualizarJogoRequestDto> atualizarValidator) : ControllerBase
@@ -106,6 +108,37 @@ public sealed class JogosController(
         await criarListValidator.ValidarAsync(listaDto, ct);
         var criados = await jogoService.InserirLoteAsync(listaDto, ct);
         return StatusCode(StatusCodes.Status201Created, criados);
+    }
+
+    /// <summary>
+    /// Reconstruir o índice OpenSearch com os jogos ativos do catálogo.
+    /// </summary>
+    /// <param name="ct">Token de cancelamento.</param>
+    /// <response code="204">Índice reconstruído com sucesso.</response>
+    /// <response code="401">Autenticação ausente ou inválida.</response>
+    /// <response code="403">O usuário não é administrador.</response>
+    /// <response code="500">Falha ao reconstruir o índice.</response>
+    [HttpPost("reindex")]
+    [Authorize(Policy = "ApenasAdmin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Reindexar(CancellationToken ct)
+    {
+        const int tamanhoLote = 500;
+        await indiceDeJogos.GarantirIndiceAsync(ct);
+        await indiceDeJogos.LimparAsync(ct);
+
+        var pagina = 1;
+        long total;
+        do
+        {
+            var resultado = await jogoService.ListarAsync(pagina, tamanhoLote, null, ct);
+            total = resultado.Total;
+            await indiceDeJogos.IndexarLoteAsync(resultado.Itens, ct);
+            pagina++;
+        }
+        while ((long)(pagina - 1) * tamanhoLote < total);
+
+        return NoContent();
     }
 
     /// <summary>

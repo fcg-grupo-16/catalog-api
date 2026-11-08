@@ -8,15 +8,18 @@ using Fcg.Catalog.Infrastructure.Caching;
 using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Repositories;
+using Fcg.Catalog.Infrastructure.Search;
 using Fcg.Catalog.Infrastructure.Settings;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using OpenSearch.Client;
 using Microsoft.OpenApi;
 using StackExchange.Redis;
 
@@ -92,6 +95,22 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
 
+        var openSearchEndpoint = configuration["OpenSearch:Endpoint"];
+        if (string.IsNullOrWhiteSpace(openSearchEndpoint))
+        {
+            services.AddSingleton<IIndiceDeJogos, IndiceDeJogosIndisponivel>();
+        }
+        else
+        {
+            var indice = configuration["OpenSearch:IndiceJogos"] ?? "jogos";
+            var settings = new ConnectionSettings(new Uri(openSearchEndpoint))
+                .DefaultIndex(indice)
+                .RequestTimeout(TimeSpan.FromSeconds(5));
+
+            services.AddSingleton<IOpenSearchClient>(new OpenSearchClient(settings));
+            services.AddSingleton<IIndiceDeJogos, IndiceDeJogosOpenSearch>();
+        }
+
         var redisSettings = configuration.GetSection(RedisSettings.SectionName).Get<RedisSettings>() ?? new RedisSettings();
         if (!redisSettings.Enabled || string.IsNullOrWhiteSpace(redisSettings.ConnectionString))
         {
@@ -125,9 +144,12 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddScoped<JogoService>();
-        services.AddScoped<IJogoService>(sp => new CachedJogoService(
-            sp.GetRequiredService<JogoService>(),
-            sp.GetRequiredService<ICacheService>()));
+        services.AddScoped<IJogoService>(sp => new IndexedJogoService(
+            new CachedJogoService(
+                sp.GetRequiredService<JogoService>(),
+                sp.GetRequiredService<ICacheService>()),
+            sp.GetRequiredService<IIndiceDeJogos>(),
+            sp.GetRequiredService<ILogger<IndexedJogoService>>()));
 
         services.AddScoped<IBibliotecaService, BibliotecaService>();
         services.AddScoped<IPurchaseService, PurchaseService>();

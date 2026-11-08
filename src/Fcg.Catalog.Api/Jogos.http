@@ -1,0 +1,6 @@
+@baseUrl = http://localhost:5000
+@adminToken = <token-de-administrador>
+
+### Reconstruir o índice OpenSearch a partir dos jogos ativos
+POST {{baseUrl}}/api/v1/jogos/reindex
+Authorization: Bearer {{adminToken}}

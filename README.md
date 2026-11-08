@@ -25,6 +25,23 @@ Se o serviço for executado via compose/orquestração, o endpoint fica em `http
 
 ---
 
+## Sincronização do índice OpenSearch
+
+O índice `jogos` é atualizado pelo `IndexedJogoService`, que decora o serviço cacheado: após a gravação no MongoDB, criação/edição indexam o documento, o lote usa uma única operação `_bulk` e a desativação lógica remove o documento. As atualizações aguardam o refresh do índice antes de responder.
+
+**Política síncrona fail-open:** falhas do OpenSearch são registradas em `Warning` e não desfazem nem invalidam uma gravação já confirmada no MongoDB; cancelamento explícito da requisição continua sendo respeitado. O índice pode ficar temporariamente defasado e deve ser reconstruído pelo endpoint administrativo:
+
+```http
+POST /api/v1/jogos/reindex
+Authorization: Bearer <token-de-administrador>
+```
+
+O endpoint apaga o conteúdo atual e reindexa os jogos ativos em lotes de 500. Use-o após recriar o índice ou recuperar jogos cuja sincronização falhou. Configure `OpenSearch:Endpoint` (por exemplo, `http://localhost:9200`) para habilitar o cliente; `OpenSearch:IndiceJogos` é opcional e assume `jogos`. Sem `Endpoint`, o cliente fica indisponível sem impedir a inicialização nem as escritas no catálogo.
+
+O mapping (`pt_br`, `compacto_indice`/`compacto_busca` e `edge_ngram` de 3 a 20 caracteres) é o definido na issue [#31](https://github.com/fcg-grupo-16/catalog-api/issues/31) e deve permanecer alinhado com a busca.
+
+---
+
 ## Cache distribuído (Redis)
 
 As duas leituras mais caras do serviço são cacheadas em Redis via `IDistributedCache` + `StackExchange.Redis`.

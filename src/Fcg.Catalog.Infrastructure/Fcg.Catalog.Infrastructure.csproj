@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="MongoDB.EntityFrameworkCore" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.12" />
+    <PackageReference Include="OpenSearch.Client" Version="2.3.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.13.17" />
     <!-- Pin direto do RabbitMQ.Client. O MassTransit 8.5.4 declara 7.1.2 como versão MÍNIMA
          (não travada), e a 7.1.2 tem uma corrida no shutdown de canal: libera um SemaphoreSlim
