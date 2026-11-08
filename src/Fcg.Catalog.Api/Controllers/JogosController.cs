@@ -19,6 +19,7 @@ namespace Fcg.Catalog.Api.Controllers;
 [Authorize(Policy = "UsuarioAutenticado")]
 public sealed class JogosController(
     IJogoService jogoService,
+    IBuscaDeJogos buscaService,
     IIndiceDeJogos indiceDeJogos,
     IValidator<CriarJogoRequestDto> criarValidator,
     IValidator<List<CriarJogoRequestDto>> criarListValidator,
@@ -46,6 +47,20 @@ public sealed class JogosController(
 
         return Ok(resultado);
     }
+
+    /// <summary>
+    /// Buscar jogos por relevância, com tolerância a erros de digitação.
+    /// </summary>
+    /// <param name="q">Termo de busca.</param>
+    /// <param name="ct">Token de cancelamento.</param>
+    /// <returns>Jogos encontrados ordenados por relevância.</returns>
+    /// <response code="200">Resultados da busca, ou lista vazia quando não houver correspondência.</response>
+    /// <response code="401">Autenticação ausente ou inválida.</response>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(IReadOnlyList<JogoBuscaResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Buscar([FromQuery] string q, CancellationToken ct)
+        => Ok(await buscaService.BuscarAsync(q, ct));
 
     /// <summary>
     /// Obter jogo por ID.

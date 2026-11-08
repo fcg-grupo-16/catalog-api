@@ -38,7 +38,13 @@ Authorization: Bearer <token-de-administrador>
 
 O endpoint apaga o conteúdo atual e reindexa os jogos ativos em lotes de 500. Use-o após recriar o índice ou recuperar jogos cuja sincronização falhou. Configure `OpenSearch:Endpoint` (por exemplo, `http://localhost:9200`) para habilitar o cliente; `OpenSearch:IndiceJogos` é opcional e assume `jogos`. Sem `Endpoint`, o cliente fica indisponível sem impedir a inicialização nem as escritas no catálogo.
 
-O mapping (`pt_br`, `compacto_indice`/`compacto_busca` e `edge_ngram` de 3 a 20 caracteres) é o definido na issue [#31](https://github.com/fcg-grupo-16/catalog-api/issues/31) e deve permanecer alinhado com a busca.
+O mapping (`pt_br`, `compacto_indice`/`compacto_busca` e `edge_ngram` de 3 a 20 caracteres) é o definido na issue [#30](https://github.com/fcg-grupo-16/catalog-api/issues/30) e deve permanecer alinhado com a busca.
+
+### Busca por texto
+
+`GET /api/v1/jogos/search?q=<termo>` usa exclusivamente o índice OpenSearch. A consulta aplica `fuzziness: AUTO`, busca nos campos `titulo^3`, `titulo.compacto^2` e `descricao`, limita a resposta aos 20 primeiros resultados e retorna o `score` em ordem decrescente. Termos sem correspondência retornam `200 OK` com uma lista vazia. O endpoint requer o mesmo JWT autenticado das demais operações protegidas.
+
+A busca **não é cacheada**: consultas de texto livre tendem a ter baixa reutilização e criariam chaves efêmeras no Redis. Além disso, ler diretamente do índice evita resultados de busca obsoletos por desacordo com a geração de cache `jogos`. A rota segue exposta pelo gateway/Ingress existente, que encaminha intacto o caminho `/api/v1/jogos/search`.
 
 ---
 

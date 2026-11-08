@@ -99,6 +99,7 @@ public static class ServiceCollectionExtensions
         if (string.IsNullOrWhiteSpace(openSearchEndpoint))
         {
             services.AddSingleton<IIndiceDeJogos, IndiceDeJogosIndisponivel>();
+            services.AddSingleton<IBuscaDeJogos, BuscaDeJogosIndisponivel>();
         }
         else
         {
@@ -109,6 +110,7 @@ public static class ServiceCollectionExtensions
 
             services.AddSingleton<IOpenSearchClient>(new OpenSearchClient(settings));
             services.AddSingleton<IIndiceDeJogos, IndiceDeJogosOpenSearch>();
+            services.AddScoped<IBuscaDeJogos, BuscaDeJogosOpenSearch>();
         }
 
         var redisSettings = configuration.GetSection(RedisSettings.SectionName).Get<RedisSettings>() ?? new RedisSettings();

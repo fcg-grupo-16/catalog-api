@@ -17,7 +17,7 @@ namespace Fcg.Catalog.IntegrationTests;
 public sealed class OpenSearchIndexIntegrationTests : IAsyncLifetime
 {
     private readonly string _indexName = $"jogos-it-{Guid.NewGuid():N}";
-    private readonly OpenSearchContainer _container = new OpenSearchBuilder("opensearchproject/opensearch:2.17.1")
+    private readonly OpenSearchContainer _container = new OpenSearchBuilder("opensearchproject/opensearch:2.19.0")
         .WithSecurityEnabled(false)
         .Build();
 
@@ -58,6 +58,64 @@ public sealed class OpenSearchIndexIntegrationTests : IAsyncLifetime
         (await PesquisarAsync(client, "CodeQuest Remastered")).Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Buscar_SuportaFuzzyEOrdenaResultadosPorScore()
+    {
+        var client = new OpenSearchClient(new ConnectionSettings(new Uri(_container.GetConnectionString()))
+            .DefaultIndex(_indexName)
+            .RequestTimeout(TimeSpan.FromSeconds(10)));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["OpenSearch:IndiceJogos"] = _indexName
+            })
+            .Build();
+        IIndiceDeJogos indice = new IndiceDeJogosOpenSearch(client, configuration);
+        IBuscaDeJogos busca = new BuscaDeJogosOpenSearch(client, indice, configuration);
+
+        await indice.IndexarLoteAsync(
+        [
+            Jogo("CodeQuest: A Jornada do Desenvolvedor", "Uma aventura de programação."),
+            Jogo("Bug Hunter", "Encontre falhas no código."),
+            Jogo("Cyber Shield", "Defenda seus sistemas."),
+            Jogo("Cloud Arena", "Competição na nuvem."),
+            Jogo("API Rush", "Uma arena de desafios para desenvolvedores.")
+        ]);
+
+        var casos = new Dictionary<string, string?>
+        {
+            ["codequest"] = "CodeQuest: A Jornada do Desenvolvedor",
+            ["code quest"] = "CodeQuest: A Jornada do Desenvolvedor",
+            ["codequets"] = "CodeQuest: A Jornada do Desenvolvedor",
+            ["code quets"] = "CodeQuest: A Jornada do Desenvolvedor",
+            ["bug huntr"] = "Bug Hunter",
+            ["cyber shild"] = "Cyber Shield",
+            ["arena"] = "Cloud Arena",
+            ["api rush"] = "API Rush",
+            ["xyzabc"] = null
+        };
+
+        foreach (var (termo, jogoEsperado) in casos)
+        {
+            var resultados = await busca.BuscarAsync(termo);
+
+            if (jogoEsperado is null)
+            {
+                resultados.Should().BeEmpty();
+                continue;
+            }
+
+            resultados.Should().NotBeEmpty();
+            resultados[0].Titulo.Should().Be(jogoEsperado, $"a consulta '{termo}' deve encontrar o jogo esperado");
+            resultados.Select(resultado => resultado.Score)
+                .Should().BeInDescendingOrder($"os resultados para '{termo}' devem ser ordenados por score");
+        }
+
+        var arena = await busca.BuscarAsync("arena");
+        arena.Should().HaveCountGreaterThan(1);
+        arena[0].Score.Should().BeGreaterThan(arena[1].Score);
+    }
+
     public Task InitializeAsync() => _container.StartAsync();
 
     public async Task DisposeAsync() => await _container.DisposeAsync();
@@ -73,6 +131,9 @@ public sealed class OpenSearchIndexIntegrationTests : IAsyncLifetime
         Assert.True(resposta.IsValid, resposta.DebugInformation);
         return resposta.Documents;
     }
+
+    private static JogoResponseDto Jogo(string titulo, string descricao) =>
+        new(Guid.NewGuid().ToString(), titulo, descricao, GeneroJogo.RPG, 19.90m, "BRL", DateTime.UtcNow, true);
 
     private sealed record JogoIndiceTeste(
         [property: PropertyName("id")] string Id,
