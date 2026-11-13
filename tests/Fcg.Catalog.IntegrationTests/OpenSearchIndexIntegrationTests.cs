@@ -116,6 +116,32 @@ public sealed class OpenSearchIndexIntegrationTests : IAsyncLifetime
         arena[0].Score.Should().BeGreaterThan(arena[1].Score);
     }
 
+    [Fact]
+    public async Task RemoverExceto_TiraDoIndiceSoOQueNaoEstaNaLista()
+    {
+        var client = new OpenSearchClient(new ConnectionSettings(new Uri(_container.GetConnectionString()))
+            .DefaultIndex(_indexName)
+            .RequestTimeout(TimeSpan.FromSeconds(10)));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["OpenSearch:IndiceJogos"] = _indexName
+            })
+            .Build();
+        IIndiceDeJogos indice = new IndiceDeJogosOpenSearch(client, configuration);
+        var ativo = Jogo("Jogo Ativo", "Continua no catálogo.");
+        var removido = Jogo("Jogo Removido", "Saiu do catálogo, mas ficou no índice.");
+        await indice.IndexarLoteAsync([ativo, removido]);
+
+        await indice.RemoverExcetoAsync([ativo.Id]);
+
+        var restantes = await client.SearchAsync<JogoIndiceTeste>(search => search
+            .Index(_indexName)
+            .Query(query => query.MatchAll()));
+        Assert.True(restantes.IsValid, restantes.DebugInformation);
+        restantes.Documents.Select(documento => documento.Id).Should().Equal(ativo.Id);
+    }
+
     public Task InitializeAsync() => _container.StartAsync();
 
     public async Task DisposeAsync() => await _container.DisposeAsync();

@@ -1,5 +1,6 @@
 using Fcg.Catalog.Application.DTOs.Response;
 using Fcg.Catalog.Application.Interfaces;
+using Fcg.Catalog.Domain.Exceptions;
 
 namespace Fcg.Catalog.Infrastructure.Search;
 
@@ -16,8 +17,9 @@ public sealed class IndiceDeJogosIndisponivel : IIndiceDeJogos
 
     public Task RemoverAsync(string id, CancellationToken ct = default) => Indisponivel();
 
-    public Task LimparAsync(CancellationToken ct = default) => Indisponivel();
+    public Task RemoverExcetoAsync(IReadOnlyCollection<string> idsMantidos, CancellationToken ct = default) =>
+        Indisponivel();
 
     private static Task Indisponivel() =>
-        Task.FromException(new InvalidOperationException(Mensagem));
+        Task.FromException(new ServicoIndisponivelException(Mensagem));
 }

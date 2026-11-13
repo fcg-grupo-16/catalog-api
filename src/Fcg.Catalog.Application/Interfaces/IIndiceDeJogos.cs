@@ -8,5 +8,6 @@ public interface IIndiceDeJogos
     Task IndexarAsync(JogoResponseDto jogo, CancellationToken ct = default);
     Task IndexarLoteAsync(IEnumerable<JogoResponseDto> jogos, CancellationToken ct = default);
     Task RemoverAsync(string id, CancellationToken ct = default);
-    Task LimparAsync(CancellationToken ct = default);
+    /// <summary>Remove do índice todo documento cujo id NÃO está em <paramref name="idsMantidos"/>.</summary>
+    Task RemoverExcetoAsync(IReadOnlyCollection<string> idsMantidos, CancellationToken ct = default);
 }

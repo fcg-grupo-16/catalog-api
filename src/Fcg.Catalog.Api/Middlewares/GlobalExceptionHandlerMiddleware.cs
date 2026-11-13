@@ -35,6 +35,7 @@ public sealed class GlobalExceptionHandlerMiddleware(
             ValidacaoException => (HttpStatusCode.UnprocessableEntity, "Dados inválidos"),
             AcessoNegadoException => (HttpStatusCode.Forbidden, "Acesso negado"),
             ConflitoDeDadosException => (HttpStatusCode.Conflict, "Conflito de dados"),
+            ServicoIndisponivelException => (HttpStatusCode.ServiceUnavailable, "Serviço indisponível"),
             _ => (HttpStatusCode.InternalServerError, "Erro interno do servidor")
         };
 

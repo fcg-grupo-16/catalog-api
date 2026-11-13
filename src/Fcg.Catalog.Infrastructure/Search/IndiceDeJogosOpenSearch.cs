@@ -13,7 +13,7 @@ public sealed class IndiceDeJogosOpenSearch(
     private const string DefinicaoIndice = """
         {
           "settings": {
-            "index": { "max_ngram_diff": 20 },
+            "index": { "max_ngram_diff": 20, "number_of_replicas": 0 },
             "analysis": {
               "char_filter": {
                 "remove_separadores": {
@@ -142,15 +142,17 @@ public sealed class IndiceDeJogosOpenSearch(
         GarantirSucesso(resposta.IsValid, resposta.DebugInformation, $"remover jogo '{id}' do índice");
     }
 
-    public async Task LimparAsync(CancellationToken ct = default)
+    public async Task RemoverExcetoAsync(IReadOnlyCollection<string> idsMantidos, CancellationToken ct = default)
     {
         await GarantirIndiceAsync(ct);
+        // `refresh=true`, e não `wait_for` como nas outras escritas: o _delete_by_query só aceita
+        // true/false, e responde 400 a wait_for.
         var resposta = await client.DeleteByQueryAsync<JogoIndiceDocumento>(request => request
             .Index(_indice)
-            .Query(query => query.MatchAll())
-            .Refresh(OpenSearch.Net.Refresh.WaitFor), ct);
+            .Query(query => query.Bool(b => b.MustNot(mn => mn.Ids(ids => ids.Values(idsMantidos)))))
+            .Refresh(OpenSearch.Net.Refresh.True), ct);
 
-        GarantirSucesso(resposta.IsValid, resposta.DebugInformation, $"limpar o índice '{_indice}'");
+        GarantirSucesso(resposta.IsValid, resposta.DebugInformation, $"remover documentos obsoletos do índice '{_indice}'");
     }
 
     private static JogoIndiceDocumento ParaDocumento(JogoResponseDto jogo) =>

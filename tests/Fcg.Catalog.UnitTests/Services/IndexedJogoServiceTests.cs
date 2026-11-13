@@ -109,7 +109,7 @@ public sealed class IndexedJogoServiceTests
         var indice = provider.GetRequiredService<IIndiceDeJogos>();
 
         Assert.IsType<IndiceDeJogosIndisponivel>(indice);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => indice.GarantirIndiceAsync());
+        await Assert.ThrowsAsync<Fcg.Catalog.Domain.Exceptions.ServicoIndisponivelException>(() => indice.GarantirIndiceAsync());
     }
 
     private static IndexedJogoService CriarService(

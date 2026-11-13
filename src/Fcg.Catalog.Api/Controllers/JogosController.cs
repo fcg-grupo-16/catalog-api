@@ -56,9 +56,11 @@ public sealed class JogosController(
     /// <returns>Jogos encontrados ordenados por relevância.</returns>
     /// <response code="200">Resultados da busca, ou lista vazia quando não houver correspondência.</response>
     /// <response code="401">Autenticação ausente ou inválida.</response>
+    /// <response code="503">OpenSearch não configurado ou fora do ar.</response>
     [HttpGet("search")]
     [ProducesResponseType(typeof(IReadOnlyList<JogoBuscaResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Buscar([FromQuery] string q, CancellationToken ct)
         => Ok(await buscaService.BuscarAsync(q, ct));
 
@@ -128,20 +130,28 @@ public sealed class JogosController(
     /// <summary>
     /// Reconstruir o índice OpenSearch com os jogos ativos do catálogo.
     /// </summary>
+    /// <remarks>
+    /// Indexa todos os jogos ativos com `_bulk` (sobrescreve pelo id) e só DEPOIS remove do índice o
+    /// que não está mais ativo. Na ordem inversa — apagar tudo e reindexar —, a busca ficaria vazia
+    /// durante a reconstrução, e uma falha no meio deixaria o índice parcial.
+    /// </remarks>
     /// <param name="ct">Token de cancelamento.</param>
     /// <response code="204">Índice reconstruído com sucesso.</response>
     /// <response code="401">Autenticação ausente ou inválida.</response>
     /// <response code="403">O usuário não é administrador.</response>
-    /// <response code="500">Falha ao reconstruir o índice.</response>
+    /// <response code="503">OpenSearch não configurado ou fora do ar.</response>
     [HttpPost("reindex")]
     [Authorize(Policy = "ApenasAdmin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Reindexar(CancellationToken ct)
     {
         const int tamanhoLote = 500;
         await indiceDeJogos.GarantirIndiceAsync(ct);
-        await indiceDeJogos.LimparAsync(ct);
 
+        var idsAtivos = new List<string>();
         var pagina = 1;
         long total;
         do
@@ -149,10 +159,12 @@ public sealed class JogosController(
             var resultado = await jogoService.ListarAsync(pagina, tamanhoLote, null, ct);
             total = resultado.Total;
             await indiceDeJogos.IndexarLoteAsync(resultado.Itens, ct);
+            idsAtivos.AddRange(resultado.Itens.Select(jogo => jogo.Id));
             pagina++;
         }
         while ((long)(pagina - 1) * tamanhoLote < total);
 
+        await indiceDeJogos.RemoverExcetoAsync(idsAtivos, ct);
         return NoContent();
     }
 
