@@ -44,7 +44,7 @@ public sealed class CacheRegressaoTests(FcgWebAppFactory factory)
 
         // Contraprova dos dois testes acima: se o registro do DI quebrasse por completo, eles
         // passariam por acidente. Este garante que o decorator realmente está montado.
-        Assert.IsType<CachedJogoService>(scope.ServiceProvider.GetRequiredService<IJogoService>());
+        Assert.IsType<IndexedJogoService>(scope.ServiceProvider.GetRequiredService<IJogoService>());
         Assert.IsType<CachedAvaliacaoService>(scope.ServiceProvider.GetRequiredService<IAvaliacaoService>());
     }
 }

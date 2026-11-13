@@ -12,13 +12,18 @@ public sealed class JogoRepository(AppDbContext context) : IJogoRepository
         await context.Jogos.FirstOrDefaultAsync(j => j.Id == id, ct);
 
     public async Task<IEnumerable<Jogo>> ObterTodosAsync(int pagina, int tamanhoPagina, CancellationToken ct = default) =>
+        // OrderBy é o que torna Skip/Take uma PAGINAÇÃO: sem ordem definida, o Mongo não garante a
+        // mesma sequência entre duas consultas, e páginas consecutivas podem repetir ou pular jogos
+        // (o /reindex percorre o catálogo inteiro assim).
         await context.Jogos
+        .OrderBy(j => j.Id)
         .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina)
         .ToListAsync(ct);
 
     public async Task<IEnumerable<Jogo>> BuscarPorGeneroAsync(GeneroJogo genero, int pagina, int tamanhoPagina, CancellationToken ct = default) =>
         await context.Jogos
             .Where(j => j.Genero == genero)
+            .OrderBy(j => j.Id)
             .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina)
             .ToListAsync(ct);
 

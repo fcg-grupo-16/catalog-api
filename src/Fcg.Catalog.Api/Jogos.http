@@ -1,0 +1,15 @@
+@baseUrl = http://localhost:5000
+@adminToken = <token-de-administrador>
+@userToken = <token-jwt>
+
+### Buscar jogos com tolerância a erros e relevância
+GET {{baseUrl}}/api/v1/jogos/search?q=code%20quest
+Authorization: Bearer {{userToken}}
+
+### Busca sem resultados (retorna 200 com lista vazia)
+GET {{baseUrl}}/api/v1/jogos/search?q=xyzabc
+Authorization: Bearer {{userToken}}
+
+### Reconstruir o índice OpenSearch a partir dos jogos ativos
+POST {{baseUrl}}/api/v1/jogos/reindex
+Authorization: Bearer {{adminToken}}

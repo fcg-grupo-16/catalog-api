@@ -25,6 +25,29 @@ Se o serviço for executado via compose/orquestração, o endpoint fica em `http
 
 ---
 
+## Sincronização do índice OpenSearch
+
+O índice `jogos` é atualizado pelo `IndexedJogoService`, que decora o serviço cacheado: após a gravação no MongoDB, criação/edição indexam o documento, o lote usa uma única operação `_bulk` e a desativação lógica remove o documento. As atualizações aguardam o refresh do índice antes de responder (`refresh=wait_for`): o jogo criado já aparece na busca seguinte, ao custo de até ~1 s a mais no `POST`/`PUT` de jogo, que é o intervalo de refresh padrão.
+
+**Política síncrona fail-open:** falhas do OpenSearch são registradas em `Warning` e não desfazem nem invalidam uma gravação já confirmada no MongoDB; cancelamento explícito da requisição continua sendo respeitado. O índice pode ficar temporariamente defasado e deve ser reconstruído pelo endpoint administrativo:
+
+```http
+POST /api/v1/jogos/reindex
+Authorization: Bearer <token-de-administrador>
+```
+
+O endpoint reindexa os jogos ativos em lotes de 500 e **só depois** remove do índice o que não está mais ativo — na ordem inversa, a busca ficaria vazia durante a reconstrução. Use-o após recriar o índice ou recuperar jogos cuja sincronização falhou. Configure `OpenSearch:Endpoint` (por exemplo, `http://localhost:9200`) para habilitar o cliente; `OpenSearch:IndiceJogos` é opcional e assume `jogos`. Sem `Endpoint`, o cliente fica indisponível sem impedir a inicialização nem as escritas no catálogo.
+
+O índice é criado com `number_of_replicas: 0`: o OpenSearch roda como nó único (compose e cluster, [ADR 0010](https://github.com/fcg-grupo-16/orchestration/blob/main/docs/adr/0010-ambiente-aws-academy-e-busca-no-cluster.md)), e com a réplica padrão ele ficaria `yellow` para sempre. O mapping (`pt_br`, `compacto_indice`/`compacto_busca` e `edge_ngram` de 3 a 20 caracteres) é o definido na issue [#30](https://github.com/fcg-grupo-16/catalog-api/issues/30) e deve permanecer alinhado com a busca.
+
+### Busca por texto
+
+`GET /api/v1/jogos/search?q=<termo>` usa exclusivamente o índice OpenSearch. A consulta aplica `fuzziness: AUTO`, busca nos campos `titulo^3`, `titulo.compacto^2` e `descricao`, limita a resposta aos 20 primeiros resultados e retorna o `score` em ordem decrescente. Termos sem correspondência retornam `200 OK` com uma lista vazia. Sem `OpenSearch:Endpoint`, ou com o OpenSearch fora do ar, `/search` e `/reindex` respondem `503 Service Unavailable`. O endpoint requer o mesmo JWT autenticado das demais operações protegidas.
+
+A busca **não é cacheada**: consultas de texto livre tendem a ter baixa reutilização e criariam chaves efêmeras no Redis. Além disso, ler diretamente do índice evita resultados de busca obsoletos por desacordo com a geração de cache `jogos`. A rota segue exposta pelo gateway/Ingress existente, que encaminha intacto o caminho `/api/v1/jogos/search`.
+
+---
+
 ## Cache distribuído (Redis)
 
 As duas leituras mais caras do serviço são cacheadas em Redis via `IDistributedCache` + `StackExchange.Redis`.
